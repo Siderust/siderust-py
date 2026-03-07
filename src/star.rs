@@ -12,7 +12,7 @@ use siderust::AltitudePeriodsProvider;
 use siderust::AzimuthProvider;
 use tempoch::ModifiedJulianDate;
 
-use crate::errors::unknown_star_error;
+use crate::errors::{extract_mjd, unknown_star_error};
 use crate::observer::PyObserver;
 
 /// A star with physical properties and sky coordinates.
@@ -178,35 +178,36 @@ impl PyStar {
 
     // ── Observation methods ───────────────────────────────────────────
 
-    /// Altitude of this star in degrees at the given observer and MJD.
-    fn altitude_at(&self, observer: &PyObserver, mjd: f64) -> f64 {
-        self.inner
-            .altitude_at(&observer.inner, ModifiedJulianDate::new(mjd))
+    /// Altitude of this star in degrees at the given observer and time.
+    fn altitude_at(&self, observer: &PyObserver, time: &Bound<'_, PyAny>) -> PyResult<f64> {
+        Ok(self.inner
+            .altitude_at(&observer.inner, ModifiedJulianDate::new(extract_mjd(time)?))
             .to::<Degree>()
-            .value()
+            .value())
     }
 
-    /// Azimuth of this star in degrees at the given observer and MJD.
-    fn azimuth_at(&self, observer: &PyObserver, mjd: f64) -> f64 {
-        self.inner
-            .azimuth_at(&observer.inner, ModifiedJulianDate::new(mjd))
+    /// Azimuth of this star in degrees at the given observer and time.
+    fn azimuth_at(&self, observer: &PyObserver, time: &Bound<'_, PyAny>) -> PyResult<f64> {
+        Ok(self.inner
+            .azimuth_at(&observer.inner, ModifiedJulianDate::new(extract_mjd(time)?))
             .to::<Degree>()
-            .value()
+            .value())
     }
 
     // ── Dunder methods ────────────────────────────────────────────────
 
-    /// Track this star at a given Julian Date.
+    /// Track this star at a given time.
     ///
     /// Returns a Target wrapping the star's ICRS direction.
     ///
     /// Args:
-    ///     jd: Julian Date.
+    ///     time: Julian Date (float or tempoch type).
     ///
     /// Returns:
     ///     Target with the star's Direction at the given epoch.
-    fn track(&self, jd: f64) -> crate::target::PyTarget {
-        crate::target::track_star(self, jd)
+    fn track(&self, time: &Bound<'_, PyAny>) -> PyResult<crate::target::PyTarget> {
+        let jd = extract_mjd(time)?;
+        Ok(crate::target::track_star(self, jd))
     }
 
     fn __repr__(&self) -> String {

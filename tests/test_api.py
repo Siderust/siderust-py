@@ -579,3 +579,83 @@ class TestEarthObservationRejection:
         obs = Observer.roque_de_los_muchachos()
         with pytest.raises(ValueError, match="[Ee]arth"):
             crossings(Body.Earth, obs, 60000.0, 60001.0, 0.0)
+
+
+class TestTempochTypeAcceptance:
+    """Tests that time parameters accept both raw floats and tempoch types."""
+
+    def test_altitude_accepts_raw_float(self):
+        """altitude_at should accept raw float MJD."""
+        obs = Observer.roque_de_los_muchachos()
+        alt = altitude_at(Body.Sun, obs, 60000.0)
+        assert isinstance(alt, float)
+
+    def test_altitude_accepts_object_with_value(self):
+        """altitude_at should accept object with .value attribute."""
+        obs = Observer.roque_de_los_muchachos()
+
+        # Mock tempoch.ModifiedJulianDate-like object
+        class MJDLike:
+            def __init__(self, v):
+                self.value = v
+
+        mjd = MJDLike(60000.0)
+        alt = altitude_at(Body.Sun, obs, mjd)
+        assert isinstance(alt, float)
+
+    def test_body_altitude_accepts_object(self):
+        """Body.altitude_at should accept object with .value."""
+        obs = Observer.roque_de_los_muchachos()
+
+        class MJDLike:
+            def __init__(self, v):
+                self.value = v
+
+        alt_float = Body.Sun.altitude_at(obs, 60000.0)
+        alt_obj = Body.Sun.altitude_at(obs, MJDLike(60000.0))
+        assert abs(alt_float - alt_obj) < 1e-10
+
+    def test_star_altitude_accepts_object(self):
+        """Star.altitude_at should accept object with .value."""
+        obs = Observer.roque_de_los_muchachos()
+        vega = Star.catalog("Vega")
+
+        class MJDLike:
+            def __init__(self, v):
+                self.value = v
+
+        alt_float = vega.altitude_at(obs, 60000.0)
+        alt_obj = vega.altitude_at(obs, MJDLike(60000.0))
+        assert abs(alt_float - alt_obj) < 1e-10
+
+    def test_above_threshold_accepts_objects(self):
+        """above_threshold should accept objects for start/end."""
+        obs = Observer.roque_de_los_muchachos()
+
+        class MJDLike:
+            def __init__(self, v):
+                self.value = v
+
+        periods_float = above_threshold(Body.Sun, obs, 60000.0, 60001.0, 0.0)
+        periods_obj = above_threshold(Body.Sun, obs, MJDLike(60000.0), MJDLike(60001.0), 0.0)
+        assert len(periods_float) == len(periods_obj)
+
+    def test_crossings_accepts_objects(self):
+        """crossings should accept objects for start/end."""
+        obs = Observer.roque_de_los_muchachos()
+
+        class MJDLike:
+            def __init__(self, v):
+                self.value = v
+
+        events_float = crossings(Body.Sun, obs, 60000.0, 60001.0, 0.0)
+        events_obj = crossings(Body.Sun, obs, MJDLike(60000.0), MJDLike(60001.0), 0.0)
+        assert len(events_float) == len(events_obj)
+
+    def test_invalid_time_type_raises(self):
+        """Passing an invalid type should raise TypeError."""
+        import pytest
+
+        obs = Observer.roque_de_los_muchachos()
+        with pytest.raises((TypeError, AttributeError)):
+            altitude_at(Body.Sun, obs, "not a number")

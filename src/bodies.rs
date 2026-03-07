@@ -13,6 +13,7 @@ use siderust::AltitudePeriodsProvider;
 use siderust::AzimuthProvider;
 use tempoch::{JulianDate, ModifiedJulianDate};
 
+use crate::errors::extract_mjd;
 use crate::observer::PyObserver;
 use crate::position::{
     PyPosition, CENTER_BARY, CENTER_GEO, CENTER_HELIO, FRAME_ECL, UNIT_AU, UNIT_KM,
@@ -226,42 +227,42 @@ pub(crate) use dispatch_body;
 
 #[pymethods]
 impl PyBody {
-    /// Altitude of this body in degrees at the given observer and MJD.
+    /// Altitude of this body in degrees at the given observer and time.
     ///
     /// Args:
     ///     observer: Observer location.
-    ///     mjd: Modified Julian Date (float).
+    ///     time: Modified Julian Date (float or tempoch.ModifiedJulianDate).
     ///
     /// Returns:
     ///     Altitude in degrees.
     ///
     /// Raises:
     ///     ValueError: If the body is Earth (cannot observe Earth from Earth).
-    fn altitude_at(&self, observer: &PyObserver, mjd: f64) -> PyResult<f64> {
-        self.altitude_at_inner(&observer.inner, ModifiedJulianDate::new(mjd))
+    fn altitude_at(&self, observer: &PyObserver, time: &Bound<'_, PyAny>) -> PyResult<f64> {
+        self.altitude_at_inner(&observer.inner, ModifiedJulianDate::new(extract_mjd(time)?))
     }
 
-    /// Azimuth of this body in degrees at the given observer and MJD.
+    /// Azimuth of this body in degrees at the given observer and time.
     ///
     /// Args:
     ///     observer: Observer location.
-    ///     mjd: Modified Julian Date (float).
+    ///     time: Modified Julian Date (float or tempoch.ModifiedJulianDate).
     ///
     /// Returns:
     ///     Azimuth in degrees (North = 0, East = 90).
     ///
     /// Raises:
     ///     ValueError: If the body is Earth (cannot observe Earth from Earth).
-    fn azimuth_at(&self, observer: &PyObserver, mjd: f64) -> PyResult<f64> {
-        self.azimuth_at_inner(&observer.inner, ModifiedJulianDate::new(mjd))
+    fn azimuth_at(&self, observer: &PyObserver, time: &Bound<'_, PyAny>) -> PyResult<f64> {
+        self.azimuth_at_inner(&observer.inner, ModifiedJulianDate::new(extract_mjd(time)?))
     }
 
     /// Heliocentric ecliptic cartesian position at a given Julian Date (VSOP87a).
     ///
     /// Returns a Position in EclipticMeanJ2000 / Heliocentric / AU.
     /// Not available for Moon (use geocentric_position instead).
-    fn heliocentric_position(&self, jd: f64) -> PyResult<PyPosition> {
-        let jd = JulianDate::new(jd);
+    fn heliocentric_position(&self, time: &Bound<'_, PyAny>) -> PyResult<PyPosition> {
+        let jd = JulianDate::new(extract_mjd(time)?);
         macro_rules! vsop87a {
             ($body:ty) => {{
                 let p = <$body>::vsop87a(jd);
@@ -304,8 +305,8 @@ impl PyBody {
     /// Barycentric ecliptic cartesian position at a given Julian Date (VSOP87e).
     ///
     /// Returns a Position in EclipticMeanJ2000 / Barycentric / AU.
-    fn barycentric_position(&self, jd: f64) -> PyResult<PyPosition> {
-        let jd = JulianDate::new(jd);
+    fn barycentric_position(&self, time: &Bound<'_, PyAny>) -> PyResult<PyPosition> {
+        let jd = JulianDate::new(extract_mjd(time)?);
         macro_rules! vsop87e {
             ($body:ty) => {{
                 let p = <$body>::vsop87e(jd);
@@ -339,8 +340,8 @@ impl PyBody {
     ///
     /// Returns a Position in EclipticMeanJ2000 / Geocentric / km.
     /// Only available for the Moon.
-    fn geocentric_position(&self, jd: f64) -> PyResult<PyPosition> {
-        let jd = JulianDate::new(jd);
+    fn geocentric_position(&self, time: &Bound<'_, PyAny>) -> PyResult<PyPosition> {
+        let jd = JulianDate::new(extract_mjd(time)?);
         match self {
             PyBody::Moon => {
                 let p = solar_system::Moon::get_geo_position::<Kilometer>(jd);
@@ -355,19 +356,20 @@ impl PyBody {
         }
     }
 
-    /// Track this body at a given Julian Date.
+    /// Track this body at a given time.
     ///
     /// Returns a Target wrapping the body's natural position:
     /// - Planets/Sun: barycentric ecliptic position (AU)
     /// - Moon: geocentric ecliptic position (km)
     ///
     /// Args:
-    ///     jd: Julian Date.
+    ///     time: Julian Date (float or tempoch type).
     ///
     /// Returns:
     ///     Target with the body's position at the given epoch.
-    fn track(&self, jd: f64) -> crate::target::PyTarget {
-        crate::target::track_body(self, jd)
+    fn track(&self, time: &Bound<'_, PyAny>) -> PyResult<crate::target::PyTarget> {
+        let jd = extract_mjd(time)?;
+        Ok(crate::target::track_body(self, jd))
     }
 
     fn __repr__(&self) -> String {

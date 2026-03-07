@@ -10,7 +10,7 @@ use tempoch::{Interval, ModifiedJulianDate, MJD};
 
 use crate::bodies::{dispatch_body, PyBody};
 use crate::coordinates::PyDirection;
-use crate::errors::invalid_period_error;
+use crate::errors::{extract_mjd, invalid_period_error};
 use crate::events::{PyCrossingEvent, PyCulminationEvent};
 use crate::observer::PyObserver;
 use crate::star::PyStar;
@@ -60,6 +60,16 @@ fn make_window(start_mjd: f64, end_mjd: f64) -> PyResult<tempoch::Period<MJD>> {
     ))
 }
 
+/// Make a window from PyAny time objects.
+fn make_window_from_any(
+    start: &Bound<'_, PyAny>,
+    end: &Bound<'_, PyAny>,
+) -> PyResult<tempoch::Period<MJD>> {
+    let start_mjd = extract_mjd(start)?;
+    let end_mjd = extract_mjd(end)?;
+    make_window(start_mjd, end_mjd)
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Public Python functions
 // ═══════════════════════════════════════════════════════════════════════════
@@ -69,16 +79,17 @@ fn make_window(start_mjd: f64, end_mjd: f64) -> PyResult<tempoch::Period<MJD>> {
 /// Args:
 ///     target: A Body, Star, or Direction.
 ///     observer: Observer location.
-///     mjd: Modified Julian Date (float).
+///     time: Modified Julian Date (float or tempoch.ModifiedJulianDate).
 ///
 /// Returns:
 ///     Altitude in degrees.
 ///
 /// Example:
 ///     >>> altitude_at(Body.Sun, Observer.roque_de_los_muchachos(), 60000.0)
+///     >>> altitude_at(Body.Sun, Observer.roque_de_los_muchachos(), ModifiedJulianDate(60000.0))
 #[pyfunction]
-pub fn altitude_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) -> PyResult<f64> {
-    let t = ModifiedJulianDate::new(mjd);
+pub fn altitude_at(target: &Bound<'_, PyAny>, observer: &PyObserver, time: &Bound<'_, PyAny>) -> PyResult<f64> {
+    let t = ModifiedJulianDate::new(extract_mjd(time)?);
     match extract_subject(target)? {
         Subject::Body(body) => body.altitude_at_inner(&observer.inner, t),
         Subject::Star(star) => Ok(star
@@ -97,14 +108,14 @@ pub fn altitude_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) -
 /// Args:
 ///     target: A Body, Star, or Direction.
 ///     observer: Observer location.
-///     mjd: Modified Julian Date (float).
+///     time: Modified Julian Date (float or tempoch.ModifiedJulianDate).
 ///
 /// Returns:
 ///     Azimuth in degrees (North = 0, East = 90).
 #[pyfunction]
-pub fn azimuth_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) -> PyResult<f64> {
+pub fn azimuth_at(target: &Bound<'_, PyAny>, observer: &PyObserver, time: &Bound<'_, PyAny>) -> PyResult<f64> {
     use siderust::AzimuthProvider;
-    let t = ModifiedJulianDate::new(mjd);
+    let t = ModifiedJulianDate::new(extract_mjd(time)?);
     match extract_subject(target)? {
         Subject::Body(body) => body.azimuth_at_inner(&observer.inner, t),
         Subject::Star(star) => Ok(star
@@ -123,8 +134,8 @@ pub fn azimuth_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) ->
 /// Args:
 ///     target: A Body, Star, or Direction.
 ///     observer: Observer location.
-///     start_mjd: Start of the search window (MJD).
-///     end_mjd: End of the search window (MJD).
+///     start: Start of the search window (MJD float or tempoch.ModifiedJulianDate).
+///     end: End of the search window (MJD float or tempoch.ModifiedJulianDate).
 ///     threshold_deg: Altitude threshold in degrees.
 ///
 /// Returns:
@@ -133,11 +144,11 @@ pub fn azimuth_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) ->
 pub fn above_threshold(
     target: &Bound<'_, PyAny>,
     observer: &PyObserver,
-    start_mjd: f64,
-    end_mjd: f64,
+    start: &Bound<'_, PyAny>,
+    end: &Bound<'_, PyAny>,
     threshold_deg: f64,
 ) -> PyResult<Vec<(f64, f64)>> {
-    let window = make_window(start_mjd, end_mjd)?;
+    let window = make_window_from_any(start, end)?;
     let threshold = Degrees::new(threshold_deg);
     let opts = SearchOpts::default();
 
@@ -167,8 +178,8 @@ pub fn above_threshold(
 /// Args:
 ///     target: A Body, Star, or Direction.
 ///     observer: Observer location.
-///     start_mjd: Start of the search window (MJD).
-///     end_mjd: End of the search window (MJD).
+///     start: Start of the search window (MJD float or tempoch.ModifiedJulianDate).
+///     end: End of the search window (MJD float or tempoch.ModifiedJulianDate).
 ///     threshold_deg: Altitude threshold in degrees.
 ///
 /// Returns:
@@ -177,11 +188,11 @@ pub fn above_threshold(
 pub fn below_threshold(
     target: &Bound<'_, PyAny>,
     observer: &PyObserver,
-    start_mjd: f64,
-    end_mjd: f64,
+    start: &Bound<'_, PyAny>,
+    end: &Bound<'_, PyAny>,
     threshold_deg: f64,
 ) -> PyResult<Vec<(f64, f64)>> {
-    let window = make_window(start_mjd, end_mjd)?;
+    let window = make_window_from_any(start, end)?;
     let threshold = Degrees::new(threshold_deg);
     let opts = SearchOpts::default();
 
@@ -211,8 +222,8 @@ pub fn below_threshold(
 /// Args:
 ///     target: A Body, Star, or Direction.
 ///     observer: Observer location.
-///     start_mjd: Start of the search window (MJD).
-///     end_mjd: End of the search window (MJD).
+///     start: Start of the search window (MJD float or tempoch.ModifiedJulianDate).
+///     end: End of the search window (MJD float or tempoch.ModifiedJulianDate).
 ///     threshold_deg: Altitude threshold in degrees.
 ///
 /// Returns:
@@ -221,11 +232,11 @@ pub fn below_threshold(
 pub fn crossings(
     target: &Bound<'_, PyAny>,
     observer: &PyObserver,
-    start_mjd: f64,
-    end_mjd: f64,
+    start: &Bound<'_, PyAny>,
+    end: &Bound<'_, PyAny>,
     threshold_deg: f64,
 ) -> PyResult<Vec<PyCrossingEvent>> {
-    let window = make_window(start_mjd, end_mjd)?;
+    let window = make_window_from_any(start, end)?;
     let threshold = Degrees::new(threshold_deg);
     let opts = SearchOpts::default();
 
@@ -252,8 +263,8 @@ pub fn crossings(
 /// Args:
 ///     target: A Body, Star, or Direction.
 ///     observer: Observer location.
-///     start_mjd: Start of the search window (MJD).
-///     end_mjd: End of the search window (MJD).
+///     start: Start of the search window (MJD float or tempoch.ModifiedJulianDate).
+///     end: End of the search window (MJD float or tempoch.ModifiedJulianDate).
 ///
 /// Returns:
 ///     List of CulminationEvent objects.
@@ -261,10 +272,10 @@ pub fn crossings(
 pub fn culminations(
     target: &Bound<'_, PyAny>,
     observer: &PyObserver,
-    start_mjd: f64,
-    end_mjd: f64,
+    start: &Bound<'_, PyAny>,
+    end: &Bound<'_, PyAny>,
 ) -> PyResult<Vec<PyCulminationEvent>> {
-    let window = make_window(start_mjd, end_mjd)?;
+    let window = make_window_from_any(start, end)?;
     let opts = SearchOpts::default();
 
     let events = match extract_subject(target)? {
