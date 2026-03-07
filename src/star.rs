@@ -163,6 +163,19 @@ impl PyStar {
 
     // ── Dunder methods ────────────────────────────────────────────────
 
+    /// Track this star at a given Julian Date.
+    ///
+    /// Returns a Target wrapping the star's ICRS direction.
+    ///
+    /// Args:
+    ///     jd: Julian Date.
+    ///
+    /// Returns:
+    ///     Target with the star's Direction at the given epoch.
+    fn track(&self, jd: f64) -> crate::target::PyTarget {
+        crate::target::track_star(self, jd)
+    }
+
     fn __repr__(&self) -> String {
         format!("Star('{}')", self.inner.name)
     }
@@ -187,5 +200,32 @@ impl PyStar {
         let mut hasher = DefaultHasher::new();
         self.inner.name.hash(&mut hasher);
         hasher.finish()
+    }
+
+    /// Convert to a dictionary.
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let d = pyo3::types::PyDict::new(py);
+        d.set_item("name", self.name())?;
+        d.set_item("ra_deg", self.ra_deg())?;
+        d.set_item("dec_deg", self.dec_deg())?;
+        d.set_item("distance_ly", self.distance_ly())?;
+        d.set_item("mass_solar", self.mass_solar())?;
+        d.set_item("luminosity_solar", self.luminosity_solar())?;
+        Ok(d)
+    }
+
+    /// Create from a dictionary (custom star with RA/Dec; uses name and coordinates).
+    #[staticmethod]
+    fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
+        let name: String = d.get_item("name")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'name'"))?
+            .extract()?;
+        let ra: f64 = d.get_item("ra_deg")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'ra_deg'"))?
+            .extract()?;
+        let dec: f64 = d.get_item("dec_deg")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'dec_deg'"))?
+            .extract()?;
+        Ok(Self::from_ra_dec(&name, ra, dec))
     }
 }

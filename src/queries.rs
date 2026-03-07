@@ -271,3 +271,53 @@ pub fn culminations(
 
     Ok(events.into_iter().map(PyCulminationEvent::from).collect())
 }
+
+// =============================================================================
+// Twilight constants
+// =============================================================================
+
+/// Twilight threshold constants (Sun altitude thresholds in degrees).
+///
+/// - HORIZON: 0.0°
+/// - CIVIL: -6.0°
+/// - NAUTICAL: -12.0°
+/// - ASTRONOMICAL: -18.0°
+
+pub const TWILIGHT_HORIZON: f64 = 0.0;
+pub const TWILIGHT_CIVIL: f64 = -6.0;
+pub const TWILIGHT_NAUTICAL: f64 = -12.0;
+pub const TWILIGHT_ASTRONOMICAL: f64 = -18.0;
+
+// =============================================================================
+// Period intersection
+// =============================================================================
+
+/// Compute the intersection of two lists of time periods.
+///
+/// Each period is a (start_mjd, end_mjd) tuple. Returns the sub-intervals
+/// where both period lists overlap.
+///
+/// Args:
+///     periods_a: First list of (start_mjd, end_mjd) tuples.
+///     periods_b: Second list of (start_mjd, end_mjd) tuples.
+///
+/// Returns:
+///     List of (start_mjd, end_mjd) tuples representing the intersection.
+#[pyfunction]
+pub fn intersect_periods(
+    periods_a: Vec<(f64, f64)>,
+    periods_b: Vec<(f64, f64)>,
+) -> Vec<(f64, f64)> {
+    let mut result = Vec::new();
+    for &(a_start, a_end) in &periods_a {
+        for &(b_start, b_end) in &periods_b {
+            let start = a_start.max(b_start);
+            let end = a_end.min(b_end);
+            if start < end {
+                result.push((start, end));
+            }
+        }
+    }
+    result.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    result
+}

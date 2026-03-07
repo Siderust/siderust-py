@@ -141,4 +141,24 @@ impl PyObserver {
             ),
         ))
     }
+
+    /// Convert to a dictionary.
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let d = pyo3::types::PyDict::new(py);
+        d.set_item("lon_deg", self.lon_deg())?;
+        d.set_item("lat_deg", self.lat_deg())?;
+        d.set_item("height_m", self.height_m())?;
+        Ok(d)
+    }
+
+    /// Create from a dictionary.
+    #[staticmethod]
+    fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
+        let get = |k: &str| -> PyResult<f64> {
+            d.get_item(k)?
+                .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("missing key '{}'", k)))?
+                .extract()
+        };
+        Ok(Self::new(get("lon_deg")?, get("lat_deg")?, get("height_m")?))
+    }
 }

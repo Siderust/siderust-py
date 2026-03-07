@@ -14,6 +14,8 @@ from siderust._siderust import (
     Body,
     Star,
     Direction,
+    Position,
+    SphericalPosition,
     # Event types
     CrossingEvent,
     CulminationEvent,
@@ -24,6 +26,12 @@ from siderust._siderust import (
     MoonPhaseLabel,
     PhaseEvent,
     PhaseKind,
+    # Orbit / target / ephemeris types
+    Orbit,
+    Comet,
+    ProperMotion,
+    Target,
+    RuntimeEphemeris,
     # Free functions
     altitude_at,
     above_threshold,
@@ -31,8 +39,15 @@ from siderust._siderust import (
     crossings,
     culminations,
     azimuth_at,
+    intersect_periods,
     moon_phase,
     find_moon_phases,
+    apply_proper_motion,
+    # Twilight constants
+    TWILIGHT_HORIZON,
+    TWILIGHT_CIVIL,
+    TWILIGHT_NAUTICAL,
+    TWILIGHT_ASTRONOMICAL,
     # Version
     __version__,
 )
@@ -43,6 +58,8 @@ __all__ = [
     "Body",
     "Star",
     "Direction",
+    "Position",
+    "SphericalPosition",
     # Event types
     "CrossingEvent",
     "CulminationEvent",
@@ -53,6 +70,12 @@ __all__ = [
     "MoonPhaseLabel",
     "PhaseEvent",
     "PhaseKind",
+    # Orbit / target / ephemeris types
+    "Orbit",
+    "Comet",
+    "ProperMotion",
+    "Target",
+    "RuntimeEphemeris",
     # Free functions
     "altitude_at",
     "above_threshold",
@@ -60,8 +83,15 @@ __all__ = [
     "crossings",
     "culminations",
     "azimuth_at",
+    "intersect_periods",
     "moon_phase",
     "find_moon_phases",
+    "apply_proper_motion",
+    # Twilight constants
+    "TWILIGHT_HORIZON",
+    "TWILIGHT_CIVIL",
+    "TWILIGHT_NAUTICAL",
+    "TWILIGHT_ASTRONOMICAL",
     # Version
     "__version__",
 ]
