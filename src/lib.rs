@@ -8,19 +8,27 @@ use pyo3::prelude::*;
 
 mod bodies;
 mod coordinates;
+mod ephemeris;
 mod errors;
 mod events;
 mod observer;
+mod orbit;
 mod phase;
+mod position;
 mod queries;
 mod star;
+mod target;
 
 use bodies::PyBody;
 use coordinates::PyDirection;
+use ephemeris::PyRuntimeEphemeris;
 use events::{PyCrossingDirection, PyCrossingEvent, PyCulminationEvent, PyCulminationKind};
 use observer::PyObserver;
+use orbit::{PyComet, PyOrbit};
 use phase::{PyMoonPhaseGeometry, PyMoonPhaseLabel, PyPhaseEvent, PyPhaseKind};
+use position::{PyPosition, PySphericalPosition};
 use star::PyStar;
+use target::{PyProperMotion, PyTarget};
 
 /// siderust: Astrometry & Astrodynamics for Python
 ///
@@ -41,6 +49,8 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBody>()?;
     m.add_class::<PyStar>()?;
     m.add_class::<PyDirection>()?;
+    m.add_class::<PyPosition>()?;
+    m.add_class::<PySphericalPosition>()?;
 
     // Event types
     m.add_class::<PyCrossingEvent>()?;
@@ -54,6 +64,13 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPhaseEvent>()?;
     m.add_class::<PyPhaseKind>()?;
 
+    // Orbit / target / ephemeris types
+    m.add_class::<PyOrbit>()?;
+    m.add_class::<PyComet>()?;
+    m.add_class::<PyProperMotion>()?;
+    m.add_class::<PyTarget>()?;
+    m.add_class::<PyRuntimeEphemeris>()?;
+
     // Free functions
     m.add_function(wrap_pyfunction!(queries::altitude_at, m)?)?;
     m.add_function(wrap_pyfunction!(queries::above_threshold, m)?)?;
@@ -61,8 +78,16 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(queries::crossings, m)?)?;
     m.add_function(wrap_pyfunction!(queries::culminations, m)?)?;
     m.add_function(wrap_pyfunction!(queries::azimuth_at, m)?)?;
+    m.add_function(wrap_pyfunction!(queries::intersect_periods, m)?)?;
     m.add_function(wrap_pyfunction!(phase::moon_phase, m)?)?;
     m.add_function(wrap_pyfunction!(phase::find_moon_phases, m)?)?;
+    m.add_function(wrap_pyfunction!(target::apply_proper_motion, m)?)?;
+
+    // Twilight constants
+    m.add("TWILIGHT_HORIZON", queries::TWILIGHT_HORIZON)?;
+    m.add("TWILIGHT_CIVIL", queries::TWILIGHT_CIVIL)?;
+    m.add("TWILIGHT_NAUTICAL", queries::TWILIGHT_NAUTICAL)?;
+    m.add("TWILIGHT_ASTRONOMICAL", queries::TWILIGHT_ASTRONOMICAL)?;
 
     // Version
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;

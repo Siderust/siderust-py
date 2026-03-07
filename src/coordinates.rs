@@ -30,6 +30,7 @@ impl PyDirection {
     }
 }
 
+#[allow(clippy::wrong_self_convention)]
 #[pymethods]
 impl PyDirection {
     /// Create an ICRS direction from right ascension and declination.
@@ -70,6 +71,68 @@ impl PyDirection {
             .azimuth_at(&observer.inner, ModifiedJulianDate::new(mjd))
             .to::<Degree>()
             .value()
+    }
+
+    /// Angular separation to another direction in degrees (Vincenty formula).
+    fn angular_separation(&self, other: &PyDirection) -> f64 {
+        let lon1 = self.inner.azimuth.to::<Degree>().value().to_radians();
+        let lat1 = self.inner.polar.to::<Degree>().value().to_radians();
+        let lon2 = other.inner.azimuth.to::<Degree>().value().to_radians();
+        let lat2 = other.inner.polar.to::<Degree>().value().to_radians();
+        crate::position::vincenty_separation(lon1, lat1, lon2, lat2).to_degrees()
+    }
+
+    /// Convert to unit cartesian vector (x, y, z).
+    fn to_cartesian(&self) -> (f64, f64, f64) {
+        let ra = self.inner.azimuth.to::<Degree>().value().to_radians();
+        let dec = self.inner.polar.to::<Degree>().value().to_radians();
+        let x = dec.cos() * ra.cos();
+        let y = dec.cos() * ra.sin();
+        let z = dec.sin();
+        (x, y, z)
+    }
+
+    /// Dot product with another direction (unit vectors).
+    fn dot(&self, other: &PyDirection) -> f64 {
+        let (x1, y1, z1) = self.to_cartesian();
+        let (x2, y2, z2) = other.to_cartesian();
+        x1 * x2 + y1 * y2 + z1 * z2
+    }
+
+    /// Track this direction at a given Julian Date.
+    ///
+    /// Fixed directions are time-invariant, so this simply wraps the
+    /// direction in a Target with the given epoch.
+    ///
+    /// Args:
+    ///     jd: Julian Date.
+    ///
+    /// Returns:
+    ///     Target with this Direction at the given epoch.
+    fn track(&self, jd: f64) -> crate::target::PyTarget {
+        crate::target::track_direction(self, jd)
+    }
+
+    /// Convert to a dictionary.
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let d = pyo3::types::PyDict::new(py);
+        d.set_item("ra_deg", self.ra_deg())?;
+        d.set_item("dec_deg", self.dec_deg())?;
+        Ok(d)
+    }
+
+    /// Create from a dictionary.
+    #[staticmethod]
+    fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
+        let ra: f64 = d
+            .get_item("ra_deg")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'ra_deg'"))?
+            .extract()?;
+        let dec: f64 = d
+            .get_item("dec_deg")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'dec_deg'"))?
+            .extract()?;
+        Ok(Self::new(ra, dec))
     }
 
     fn __repr__(&self) -> String {
