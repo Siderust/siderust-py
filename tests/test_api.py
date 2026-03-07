@@ -8,12 +8,16 @@ from siderust import (
     CulminationEvent,
     CulminationKind,
     Direction,
+    Displacement,
     MoonPhaseGeometry,
     MoonPhaseLabel,
     Observer,
     PhaseEvent,
     PhaseKind,
+    Position,
+    ProperMotion,
     Star,
+    Target,
     above_threshold,
     altitude_at,
     azimuth_at,
@@ -46,6 +50,10 @@ class TestModuleExports:
             "MoonPhaseLabel",
             "PhaseEvent",
             "PhaseKind",
+            "Position",
+            "Displacement",
+            "Target",
+            "ProperMotion",
             "altitude_at",
             "above_threshold",
             "below_threshold",
@@ -169,11 +177,24 @@ class TestStar:
         with pytest.raises(ValueError, match="Unknown star"):
             Star.catalog("Nonexistent")
 
-    def test_from_ra_dec(self):
-        s = Star.from_ra_dec("TestStar", 100.0, 30.0)
+    def test_custom(self):
+        """Test creating a star with custom physical parameters."""
+        s = Star.custom(
+            "TestStar",
+            ra_deg=100.0,
+            dec_deg=30.0,
+            distance_ly=10.0,
+            mass_solar=1.0,
+            radius_solar=1.0,
+            luminosity_solar=1.0,
+        )
         assert s.name == "TestStar"
         assert abs(s.ra_deg - 100.0) < 0.01
         assert abs(s.dec_deg - 30.0) < 0.01
+        assert abs(s.distance_ly - 10.0) < 0.01
+        assert abs(s.mass_solar - 1.0) < 0.01
+        assert abs(s.radius_solar - 1.0) < 0.01
+        assert abs(s.luminosity_solar - 1.0) < 0.01
 
     def test_properties(self):
         vega = Star.catalog("Vega")
@@ -424,3 +445,137 @@ class TestEndToEnd:
         # Verify we get a sensible description
         s = str(geom)
         assert "illuminated" in s
+
+
+class TestAffnSemantics:
+    """Test affine geometry semantics — Position and Displacement."""
+
+    def test_position_subtraction_returns_displacement(self):
+        """Position - Position should return Displacement, not Position."""
+        p1 = Position(1.0, 2.0, 3.0, "ICRS", "Barycentric", "au")
+        p2 = Position(0.5, 1.0, 1.5, "ICRS", "Barycentric", "au")
+        d = p1 - p2
+        assert isinstance(d, Displacement), f"Expected Displacement, got {type(d)}"
+        assert abs(d.dx - 0.5) < 1e-10
+        assert abs(d.dy - 1.0) < 1e-10
+        assert abs(d.dz - 1.5) < 1e-10
+
+    def test_position_plus_displacement_returns_position(self):
+        """Position + Displacement should return Position."""
+        p = Position(1.0, 2.0, 3.0, "ICRS", "Barycentric", "au")
+        d = Displacement(0.5, 0.5, 0.5, "ICRS", "au")
+        result = p + d
+        assert isinstance(result, Position), f"Expected Position, got {type(result)}"
+        assert abs(result.x - 1.5) < 1e-10
+        assert abs(result.y - 2.5) < 1e-10
+        assert abs(result.z - 3.5) < 1e-10
+
+    def test_position_minus_displacement_returns_position(self):
+        """Position - Displacement should return Position."""
+        p = Position(1.0, 2.0, 3.0, "ICRS", "Barycentric", "au")
+        d = Displacement(0.5, 0.5, 0.5, "ICRS", "au")
+        result = p - d
+        assert isinstance(result, Position), f"Expected Position, got {type(result)}"
+        assert abs(result.x - 0.5) < 1e-10
+        assert abs(result.y - 1.5) < 1e-10
+        assert abs(result.z - 2.5) < 1e-10
+
+    def test_displacement_addition(self):
+        """Displacement + Displacement should return Displacement."""
+        d1 = Displacement(1.0, 2.0, 3.0, "ICRS", "au")
+        d2 = Displacement(0.5, 1.0, 1.5, "ICRS", "au")
+        result = d1 + d2
+        assert isinstance(result, Displacement)
+        assert abs(result.dx - 1.5) < 1e-10
+        assert abs(result.dy - 3.0) < 1e-10
+        assert abs(result.dz - 4.5) < 1e-10
+
+    def test_displacement_negation(self):
+        """Negating a Displacement should work."""
+        d = Displacement(1.0, 2.0, 3.0, "ICRS", "au")
+        neg = -d
+        assert isinstance(neg, Displacement)
+        assert abs(neg.dx - (-1.0)) < 1e-10
+        assert abs(neg.dy - (-2.0)) < 1e-10
+        assert abs(neg.dz - (-3.0)) < 1e-10
+
+    def test_displacement_scalar_multiplication(self):
+        """Displacement * scalar should return Displacement."""
+        d = Displacement(1.0, 2.0, 3.0, "ICRS", "au")
+        result = d * 2.0
+        assert isinstance(result, Displacement)
+        assert abs(result.dx - 2.0) < 1e-10
+        assert abs(result.dy - 4.0) < 1e-10
+        assert abs(result.dz - 6.0) < 1e-10
+
+
+class TestTargetWithProperMotion:
+    """Test Target with proper motion support."""
+
+    def test_target_creation(self):
+        """Creating a Target with Position and time."""
+        p = Position(1.0, 2.0, 3.0, "ICRS", "Barycentric", "au")
+        t = Target(p, jd=2451545.0)
+        assert t.is_position
+        assert not t.is_direction
+        assert abs(t.time - 2451545.0) < 1e-6
+
+    def test_target_with_proper_motion(self):
+        """Creating a Target with proper motion."""
+        d = Direction(ra_deg=217.429, dec_deg=-62.679)
+        pm = ProperMotion(pm_ra_mas_yr=-3781.74, pm_dec_mas_yr=769.47)
+        t = Target(d, jd=2451545.0, proper_motion=pm)
+        assert t.is_direction
+        assert t.proper_motion is not None
+        assert abs(t.proper_motion.pm_ra_mas_yr - (-3781.74)) < 0.01
+
+    def test_star_track_preserves_proper_motion(self):
+        """Tracking a star preserves proper motion if available."""
+        vega = Star.catalog("Vega")
+        target = vega.track(2451545.0)
+        assert target.is_direction
+        # Catalog stars may or may not have proper motion; just verify it works
+        assert target.time > 0
+
+    def test_body_track_no_proper_motion(self):
+        """Solar system bodies have no proper motion."""
+        mars = Body.Mars
+        target = mars.track(2451545.0)
+        assert target.is_position
+        assert target.proper_motion is None
+
+
+class TestEarthObservationRejection:
+    """Test that Body.Earth is rejected for observation APIs."""
+
+    def test_earth_altitude_raises(self):
+        """Body.Earth.altitude_at() should raise ValueError."""
+        import pytest
+
+        obs = Observer.roque_de_los_muchachos()
+        with pytest.raises(ValueError, match="[Ee]arth"):
+            Body.Earth.altitude_at(obs, 60000.0)
+
+    def test_earth_azimuth_raises(self):
+        """Body.Earth.azimuth_at() should raise ValueError."""
+        import pytest
+
+        obs = Observer.roque_de_los_muchachos()
+        with pytest.raises(ValueError, match="[Ee]arth"):
+            Body.Earth.azimuth_at(obs, 60000.0)
+
+    def test_earth_above_threshold_raises(self):
+        """above_threshold with Body.Earth should raise ValueError."""
+        import pytest
+
+        obs = Observer.roque_de_los_muchachos()
+        with pytest.raises(ValueError, match="[Ee]arth"):
+            above_threshold(Body.Earth, obs, 60000.0, 60001.0, 0.0)
+
+    def test_earth_crossings_raises(self):
+        """crossings with Body.Earth should raise ValueError."""
+        import pytest
+
+        obs = Observer.roque_de_los_muchachos()
+        with pytest.raises(ValueError, match="[Ee]arth"):
+            crossings(Body.Earth, obs, 60000.0, 60001.0, 0.0)

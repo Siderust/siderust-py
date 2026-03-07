@@ -70,55 +70,6 @@ impl PyStar {
             .ok_or_else(|| unknown_star_error(name))
     }
 
-    /// Create a star with custom RA/Dec coordinates.
-    ///
-    /// .. deprecated::
-    ///     Use `Direction(ra_deg, dec_deg)` for coordinate-only sky positions.
-    ///     This method creates a Star with placeholder physical properties
-    ///     (distance=1 ly, mass=1 M☉, radius=1 R☉, luminosity=1 L☉), which
-    ///     is misleading. Use `Star.custom()` if you need a full Star object
-    ///     with real physical parameters.
-    ///
-    /// For altitude/azimuth queries from RA/Dec alone, prefer::
-    ///
-    ///     from siderust import Direction
-    ///     d = Direction(ra_deg=123.456, dec_deg=45.678)
-    ///     alt = d.altitude_at(observer, mjd)
-    ///
-    /// Args:
-    ///     name: Display name for the star.
-    ///     ra_deg: Right ascension in degrees.
-    ///     dec_deg: Declination in degrees.
-    #[staticmethod]
-    fn from_ra_dec(name: &str, ra_deg: f64, dec_deg: f64) -> Self {
-        // NOTE: This method is deprecated. Creates a star with placeholder
-        // physical properties which is misleading. Users should use Direction
-        // for coordinate-only queries or Star.custom for full star properties.
-        use siderust::coordinates::centers::Geocentric;
-        use siderust::coordinates::frames::EquatorialMeanJ2000;
-        use siderust::targets::CoordinateWithPM;
-        use tempoch::JulianDate;
-
-        let pos = affn::spherical::Position::<Geocentric, EquatorialMeanJ2000, LightYear>::new(
-            Degrees::new(ra_deg),
-            Degrees::new(dec_deg),
-            LightYears::new(1.0), // Placeholder distance
-        );
-
-        let coord = CoordinateWithPM::new_static(pos, JulianDate::J2000);
-
-        Self {
-            inner: Star::new(
-                name.to_string(),
-                LightYears::new(1.0),
-                SolarMasses::new(1.0),
-                qtty::length::nominal::SolarRadiuses::new(1.0),
-                SolarLuminosities::new(1.0),
-                coord,
-            ),
-        }
-    }
-
     /// Create a star with full physical parameters.
     ///
     /// Use this method when you have complete stellar metadata. For coordinate-only
@@ -197,6 +148,12 @@ impl PyStar {
     #[getter]
     fn mass_solar(&self) -> f64 {
         self.inner.mass.value()
+    }
+
+    /// Radius in solar radii.
+    #[getter]
+    fn radius_solar(&self) -> f64 {
+        self.inner.radius.value()
     }
 
     /// Luminosity in solar luminosities.
@@ -286,11 +243,15 @@ impl PyStar {
         d.set_item("dec_deg", self.dec_deg())?;
         d.set_item("distance_ly", self.distance_ly())?;
         d.set_item("mass_solar", self.mass_solar())?;
+        d.set_item("radius_solar", self.radius_solar())?;
         d.set_item("luminosity_solar", self.luminosity_solar())?;
         Ok(d)
     }
 
-    /// Create from a dictionary (custom star with RA/Dec; uses name and coordinates).
+    /// Create from a dictionary containing all physical parameters.
+    ///
+    /// Required keys: name, ra_deg, dec_deg, distance_ly, mass_solar,
+    /// radius_solar, luminosity_solar.
     #[staticmethod]
     fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
         let name: String = d
@@ -305,6 +266,30 @@ impl PyStar {
             .get_item("dec_deg")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'dec_deg'"))?
             .extract()?;
-        Ok(Self::from_ra_dec(&name, ra, dec))
+        let distance_ly: f64 = d
+            .get_item("distance_ly")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'distance_ly'"))?
+            .extract()?;
+        let mass_solar: f64 = d
+            .get_item("mass_solar")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'mass_solar'"))?
+            .extract()?;
+        let radius_solar: f64 = d
+            .get_item("radius_solar")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'radius_solar'"))?
+            .extract()?;
+        let luminosity_solar: f64 = d
+            .get_item("luminosity_solar")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'luminosity_solar'"))?
+            .extract()?;
+        Ok(Self::custom(
+            &name,
+            ra,
+            dec,
+            distance_ly,
+            mass_solar,
+            radius_solar,
+            luminosity_solar,
+        ))
     }
 }

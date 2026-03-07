@@ -30,7 +30,7 @@ use crate::star::PyStar;
 ///
 /// Example:
 ///     >>> pm = ProperMotion(pm_ra_mas_yr=27.54, pm_dec_mas_yr=10.86)
-#[pyclass(name = "ProperMotion", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "ProperMotion", module = "siderust", from_py_object)]
 #[derive(Clone)]
 pub struct PyProperMotion {
     pub(crate) inner: proper_motion::ProperMotion,
@@ -117,19 +117,23 @@ enum TargetInner {
     Direction(PyDirection),
 }
 
-/// A timestamped coordinate snapshot.
+/// A timestamped coordinate snapshot with optional proper motion.
 ///
-/// Target couples a position (or direction) with an epoch. It is the Python
-/// equivalent of Rust's `CoordinateWithPM<T>`.
+/// Target couples a position (or direction) with an epoch and optional proper
+/// motion. It is the Python equivalent of Rust's `CoordinateWithPM<T>`.
 ///
 /// Example:
 ///     >>> target = Body.Mars.track(2451545.0)
 ///     >>> print(target.time, target.position.distance())
+///     >>> # With proper motion:
+///     >>> pm = ProperMotion(pm_ra_mas_yr=27.54, pm_dec_mas_yr=10.86)
+///     >>> target = Target(direction, jd=2451545.0, proper_motion=pm)
 #[pyclass(name = "Target", module = "siderust", skip_from_py_object)]
 #[derive(Clone)]
 pub struct PyTarget {
     inner: TargetInner,
     time: f64, // Julian Date
+    proper_motion: Option<PyProperMotion>,
 }
 
 #[pymethods]
@@ -139,17 +143,25 @@ impl PyTarget {
     /// Args:
     ///     position: A Position or Direction object.
     ///     jd: Julian Date of the snapshot.
+    ///     proper_motion: Optional ProperMotion for stars/moving objects.
     #[new]
-    fn new(position: &Bound<'_, PyAny>, jd: f64) -> PyResult<Self> {
+    #[pyo3(signature = (position, jd, proper_motion = None))]
+    fn new(
+        position: &Bound<'_, PyAny>,
+        jd: f64,
+        proper_motion: Option<PyProperMotion>,
+    ) -> PyResult<Self> {
         if let Ok(pos) = position.cast::<PyPosition>() {
             Ok(Self {
                 inner: TargetInner::Position(pos.borrow().clone()),
                 time: jd,
+                proper_motion,
             })
         } else if let Ok(dir) = position.extract::<PyDirection>() {
             Ok(Self {
                 inner: TargetInner::Direction(dir),
                 time: jd,
+                proper_motion,
             })
         } else {
             Err(PyValueError::new_err(
@@ -162,6 +174,12 @@ impl PyTarget {
     #[getter]
     fn time(&self) -> f64 {
         self.time
+    }
+
+    /// Proper motion of this target (None for static objects).
+    #[getter]
+    fn proper_motion(&self) -> Option<PyProperMotion> {
+        self.proper_motion.clone()
     }
 
     /// The coordinate as a Position (raises ValueError if this is a Direction target).
@@ -199,14 +217,22 @@ impl PyTarget {
     }
 
     /// Update the target with a new position/direction and time.
-    fn update(&mut self, position: &Bound<'_, PyAny>, jd: f64) -> PyResult<()> {
+    #[pyo3(signature = (position, jd, proper_motion = None))]
+    fn update(
+        &mut self,
+        position: &Bound<'_, PyAny>,
+        jd: f64,
+        proper_motion: Option<PyProperMotion>,
+    ) -> PyResult<()> {
         if let Ok(pos) = position.cast::<PyPosition>() {
             self.inner = TargetInner::Position(pos.borrow().clone());
             self.time = jd;
+            self.proper_motion = proper_motion;
             Ok(())
         } else if let Ok(dir) = position.extract::<PyDirection>() {
             self.inner = TargetInner::Direction(dir);
             self.time = jd;
+            self.proper_motion = proper_motion;
             Ok(())
         } else {
             Err(PyValueError::new_err(
@@ -216,16 +242,21 @@ impl PyTarget {
     }
 
     fn __repr__(&self) -> String {
+        let pm_str = match &self.proper_motion {
+            Some(pm) => format!(", proper_motion={}", pm.__repr__()),
+            None => String::new(),
+        };
         match &self.inner {
             TargetInner::Position(p) => format!(
-                "Target(position=Position({:.6}, {:.6}, {:.6}, {}, {}, {}), jd={:.1})",
-                p.x, p.y, p.z, p.frame, p.center, p.unit, self.time
+                "Target(position=Position({:.6}, {:.6}, {:.6}, {}, {}, {}), jd={:.1}{})",
+                p.x, p.y, p.z, p.frame, p.center, p.unit, self.time, pm_str
             ),
             TargetInner::Direction(d) => format!(
-                "Target(direction=Direction(ra={:.4}°, dec={:.4}°), jd={:.1})",
+                "Target(direction=Direction(ra={:.4}°, dec={:.4}°), jd={:.1}{})",
                 d.inner.ra(),
                 d.inner.dec(),
-                self.time
+                self.time,
+                pm_str
             ),
         }
     }
@@ -255,6 +286,7 @@ pub(crate) fn track_body(body: &PyBody, jd: f64) -> PyTarget {
                     UNIT_KM,
                 )),
                 time: jd,
+                proper_motion: None, // Solar system bodies have no proper motion
             }
         }
         _ => {
@@ -269,6 +301,7 @@ pub(crate) fn track_body(body: &PyBody, jd: f64) -> PyTarget {
                     UNIT_AU,
                 )),
                 time: jd,
+                proper_motion: None, // Solar system bodies have no proper motion
             }
         }
     }
@@ -299,12 +332,34 @@ fn track_body_vsop87(body: &PyBody, jd: JulianDate) -> (f64, f64, f64) {
     }
 }
 
-/// Track a star at a given Julian Date — returns an ICRS direction.
+/// Track a star at a given Julian Date — returns an ICRS direction with proper motion.
 pub(crate) fn track_star(star: &PyStar, jd: f64) -> PyTarget {
     let dir = star.inner.track(JulianDate::new(jd));
+
+    // Extract proper motion from the star's coordinate if available
+    let pm = star
+        .inner
+        .coordinate
+        .get_proper_motion()
+        .map(|pm| {
+            // Convert from Degrees/Year to MilliArcseconds/Year
+            type MasPerYear = Per<MilliArcsecond, Year>;
+            let ra_mas = pm.pm_ra.to::<MasPerYear>().value();
+            let dec_mas = pm.pm_dec.to::<MasPerYear>().value();
+            let mu_alpha_star = pm.ra_convention
+                == proper_motion::RaProperMotionConvention::MuAlphaStar;
+            PyProperMotion {
+                inner: pm.clone(),
+                ra_mas,
+                dec_mas,
+                mu_alpha_star,
+            }
+        });
+
     PyTarget {
         inner: TargetInner::Direction(PyDirection { inner: dir }),
         time: jd,
+        proper_motion: pm,
     }
 }
 
@@ -314,6 +369,7 @@ pub(crate) fn track_direction(dir: &PyDirection, jd: f64) -> PyTarget {
     PyTarget {
         inner: TargetInner::Direction(PyDirection { inner: tracked }),
         time: jd,
+        proper_motion: None, // Directions don't have proper motion
     }
 }
 
