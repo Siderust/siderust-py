@@ -23,7 +23,6 @@ import sys
 
 from siderust import RuntimeEphemeris
 
-
 J2000 = 2451545.0
 
 
@@ -40,7 +39,9 @@ def print_positions(eph: RuntimeEphemeris, label: str) -> None:
     print(f"=== {label} — positions at J2000 ===")
     print(f"  Sun  (barycentric):  ({sun.x:.6f}, {sun.y:.6f}, {sun.z:.6f}) AU")
     print(f"  Earth (barycentric): ({earth_bary.x:.6f}, {earth_bary.y:.6f}, {earth_bary.z:.6f}) AU")
-    print(f"  Earth (heliocentric):({earth_helio.x:.6f}, {earth_helio.y:.6f}, {earth_helio.z:.6f}) AU")
+    print(
+        f"  Earth (heliocentric):({earth_helio.x:.6f}, {earth_helio.y:.6f}, {earth_helio.z:.6f}) AU"
+    )
     vx, vy, vz = earth_vel
     print(f"  Earth vel:           ({vx:.8f}, {vy:.8f}, {vz:.8f}) AU/day")
     print(f"  Moon  (geocentric):  ({moon.x:.1f}, {moon.y:.1f}, {moon.z:.1f}) km")
@@ -72,7 +73,7 @@ def demo_load_from_bytes() -> None:
 
     fake_data = b"this is not a valid BSP file"
     try:
-        eph = RuntimeEphemeris.from_bytes(fake_data)
+        RuntimeEphemeris.from_bytes(fake_data)
         print("  ✓ Parsed successfully (unexpected!)")
     except ValueError as e:
         print(f"  ✗ Expected error for invalid data: {e}")
@@ -100,7 +101,9 @@ def demo_api_overview() -> None:
     print("    - Compatible with DE430, DE440, DE441 BSP files")
     print("    - DE441 (~1.65 GB) covers year -13200 to +17191")
     print("    - DE440 (~120 MB) covers year 1550 to 2650")
-    print("    - BSP files are available from JPL: https://ssd.jpl.nasa.gov/planets/eph_export.html")
+    print(
+        "    - BSP files are available from JPL: https://ssd.jpl.nasa.gov/planets/eph_export.html"
+    )
     print()
 
 

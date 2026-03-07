@@ -30,6 +30,7 @@ impl PyDirection {
     }
 }
 
+#[allow(clippy::wrong_self_convention)]
 #[pymethods]
 impl PyDirection {
     /// Create an ICRS direction from right ascension and declination.
@@ -123,10 +124,12 @@ impl PyDirection {
     /// Create from a dictionary.
     #[staticmethod]
     fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
-        let ra: f64 = d.get_item("ra_deg")?
+        let ra: f64 = d
+            .get_item("ra_deg")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'ra_deg'"))?
             .extract()?;
-        let dec: f64 = d.get_item("dec_deg")?
+        let dec: f64 = d
+            .get_item("dec_deg")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'dec_deg'"))?
             .extract()?;
         Ok(Self::new(ra, dec))

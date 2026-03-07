@@ -12,7 +12,7 @@ Run with: python examples/13_coordinate_operations.py
 
 import math
 
-from siderust import Direction, Position, SphericalPosition
+from siderust import Direction, SphericalPosition
 
 
 def main():
@@ -57,7 +57,9 @@ def main():
     angle_rad = math.acos(max(-1.0, min(1.0, dot_val)))
     angle_deg = math.degrees(angle_rad)
 
-    print(f"Polaris cartesian: ({polaris_cart[0]:.4f}, {polaris_cart[1]:.4f}, {polaris_cart[2]:.4f})")
+    print(
+        f"Polaris cartesian: ({polaris_cart[0]:.4f}, {polaris_cart[1]:.4f}, {polaris_cart[2]:.4f})"
+    )
     print(f"Sirius  cartesian: ({sirius_cart[0]:.4f}, {sirius_cart[1]:.4f}, {sirius_cart[2]:.4f})")
     print(f"  angle (Cartesian dot)        = {angle_rad:.6f} rad = {angle_deg:.4f}°")
     print(f"  angular_separation (Vincenty) = {sep:.4f}°")
@@ -87,12 +89,20 @@ def main():
     print("--------------------------------------------------")
 
     earth = SphericalPosition(
-        lon_deg=100.0, lat_deg=0.0, distance=1.0,
-        frame="EclipticMeanJ2000", center="Heliocentric", unit="au",
+        lon_deg=100.0,
+        lat_deg=0.0,
+        distance=1.0,
+        frame="EclipticMeanJ2000",
+        center="Heliocentric",
+        unit="au",
     )
     mars = SphericalPosition(
-        lon_deg=200.0, lat_deg=2.0, distance=1.524,
-        frame="EclipticMeanJ2000", center="Heliocentric", unit="au",
+        lon_deg=200.0,
+        lat_deg=2.0,
+        distance=1.524,
+        frame="EclipticMeanJ2000",
+        center="Heliocentric",
+        unit="au",
     )
 
     eu_dist = earth.distance_to(mars)
@@ -130,23 +140,37 @@ def main():
     print("---------------------------------------------")
 
     vernal_equinox = SphericalPosition(
-        lon_deg=0.0, lat_deg=0.0, distance=1.0,
-        frame="EclipticMeanJ2000", center="Heliocentric",
+        lon_deg=0.0,
+        lat_deg=0.0,
+        distance=1.0,
+        frame="EclipticMeanJ2000",
+        center="Heliocentric",
     )
     summer_solstice = SphericalPosition(
-        lon_deg=90.0, lat_deg=0.0, distance=1.0,
-        frame="EclipticMeanJ2000", center="Heliocentric",
+        lon_deg=90.0,
+        lat_deg=0.0,
+        distance=1.0,
+        frame="EclipticMeanJ2000",
+        center="Heliocentric",
     )
 
     equinox_to_solstice = vernal_equinox.angular_separation(summer_solstice)
-    print(f"Vernal Equinox → Summer Solstice angular sep = {equinox_to_solstice:.4f}°  (must be 90°)")
+    print(
+        f"Vernal Equinox → Summer Solstice angular sep = {equinox_to_solstice:.4f}°  (must be 90°)"
+    )
 
     ecliptic_north = SphericalPosition(
-        lon_deg=0.0, lat_deg=90.0, distance=1.0,
-        frame="EclipticMeanJ2000", center="Heliocentric",
+        lon_deg=0.0,
+        lat_deg=90.0,
+        distance=1.0,
+        frame="EclipticMeanJ2000",
+        center="Heliocentric",
     )
     ecliptic_to_equinox = ecliptic_north.angular_separation(vernal_equinox)
-    print(f"Ecliptic North Pole → Vernal Equinox ang. sep = {ecliptic_to_equinox:.4f}°  (must be 90°)\n")
+    print(
+        "Ecliptic North Pole → Vernal Equinox ang. sep = "
+        f"{ecliptic_to_equinox:.4f}°  (must be 90°)\n"
+    )
 
     print("=== Example Complete ===")
 

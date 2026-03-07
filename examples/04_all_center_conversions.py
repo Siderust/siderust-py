@@ -16,9 +16,7 @@ from siderust import Position
 CENTERS = ["Barycentric", "Heliocentric", "Geocentric"]
 
 
-def show_center_conversion(
-    jd: float, src: Position, to_center: str
-) -> None:
+def show_center_conversion(jd: float, src: Position, to_center: str) -> None:
     """Convert src to to_center, then back, and report the round-trip error."""
     out = src.to_center(to_center, jd)
     back = out.to_center(src.center, jd)
@@ -40,8 +38,12 @@ def main():
 
     # Start with a Barycentric EclipticMeanJ2000 position
     p_bary = Position(
-        0.40, -0.10, 1.20,
-        frame="EclipticMeanJ2000", center="Barycentric", unit="au",
+        0.40,
+        -0.10,
+        1.20,
+        frame="EclipticMeanJ2000",
+        center="Barycentric",
+        unit="au",
     )
 
     # Convert to other centers
@@ -85,10 +87,7 @@ def main():
             dy = src.y - back.y
             dz = src.z - back.z
             err = (dx * dx + dy * dy + dz * dz) ** 0.5
-            print(
-                f"  {frame:<24} {src.center:<12} -> {target_center:<12} "
-                f"roundtrip={err:.3e}"
-            )
+            print(f"  {frame:<24} {src.center:<12} -> {target_center:<12} roundtrip={err:.3e}")
 
 
 if __name__ == "__main__":

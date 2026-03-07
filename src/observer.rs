@@ -156,9 +156,15 @@ impl PyObserver {
     fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
         let get = |k: &str| -> PyResult<f64> {
             d.get_item(k)?
-                .ok_or_else(|| pyo3::exceptions::PyValueError::new_err(format!("missing key '{}'", k)))?
+                .ok_or_else(|| {
+                    pyo3::exceptions::PyValueError::new_err(format!("missing key '{}'", k))
+                })?
                 .extract()
         };
-        Ok(Self::new(get("lon_deg")?, get("lat_deg")?, get("height_m")?))
+        Ok(Self::new(
+            get("lon_deg")?,
+            get("lat_deg")?,
+            get("height_m")?,
+        ))
     }
 }

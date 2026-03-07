@@ -16,9 +16,7 @@ use tempoch::JulianDate;
 
 use crate::bodies::PyBody;
 use crate::coordinates::PyDirection;
-use crate::position::{
-    PyPosition, CENTER_BARY, CENTER_GEO, FRAME_ECL, UNIT_AU, UNIT_KM,
-};
+use crate::position::{PyPosition, CENTER_BARY, CENTER_GEO, FRAME_ECL, UNIT_AU, UNIT_KM};
 use crate::star::PyStar;
 
 // =============================================================================
@@ -181,7 +179,7 @@ impl PyTarget {
     #[getter]
     fn direction(&self) -> PyResult<PyDirection> {
         match &self.inner {
-            TargetInner::Direction(d) => Ok(d.clone()),
+            TargetInner::Direction(d) => Ok(*d),
             TargetInner::Position(_) => Err(PyValueError::new_err(
                 "This target holds a Position, not a Direction. Use .position instead.",
             )),
@@ -263,7 +261,12 @@ pub(crate) fn track_body(body: &PyBody, jd: f64) -> PyTarget {
             let (x, y, z) = track_body_vsop87(body, jd_val);
             PyTarget {
                 inner: TargetInner::Position(PyPosition::new_internal(
-                    x, y, z, FRAME_ECL, CENTER_BARY, UNIT_AU,
+                    x,
+                    y,
+                    z,
+                    FRAME_ECL,
+                    CENTER_BARY,
+                    UNIT_AU,
                 )),
                 time: jd,
             }
@@ -344,12 +347,9 @@ pub fn apply_proper_motion(
         LightYears::new(1.0),
     );
 
-    let moved = proper_motion::set_proper_motion_since_j2000(
-        pos,
-        pm.inner.clone(),
-        JulianDate::new(jd),
-    )
-    .map_err(|e| PyValueError::new_err(e.to_string()))?;
+    let moved =
+        proper_motion::set_proper_motion_since_j2000(pos, pm.inner.clone(), JulianDate::new(jd))
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
 
     Ok(PyDirection {
         inner: direction::ICRS::new(moved.ra(), moved.dec()),

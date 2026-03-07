@@ -6,7 +6,7 @@ Mirrors: siderust/examples/08_solar_system.rs
 Run with: python examples/08_solar_system.py
 """
 
-from siderust import Body, Position
+from siderust import Body
 
 J2000 = 2_451_545.0
 AU_KM = 149_597_870.7
@@ -30,16 +30,23 @@ def main():
 
     print(f"Earth heliocentric distance: {earth_h.distance():.6f} AU")
     print(f"Mars heliocentric distance:  {mars_h.distance():.6f} AU")
-    print(f"Earth-Mars separation:       {earth_mars:.6f} AU "
-          f"({earth_mars * AU_KM:.0f} km)")
+    print(f"Earth-Mars separation:       {earth_mars:.6f} AU ({earth_mars * AU_KM:.0f} km)")
 
     sun_bary = Body.Sun.barycentric_position(jd)
     print(f"Sun barycentric offset from SSB: {sun_bary.distance():.8f} AU\n")
 
     # All planets: heliocentric distances
     print("Heliocentric distances at J2000:")
-    for body in [Body.Mercury, Body.Venus, Body.Earth, Body.Mars,
-                 Body.Jupiter, Body.Saturn, Body.Uranus, Body.Neptune]:
+    for body in [
+        Body.Mercury,
+        Body.Venus,
+        Body.Earth,
+        Body.Mars,
+        Body.Jupiter,
+        Body.Saturn,
+        Body.Uranus,
+        Body.Neptune,
+    ]:
         pos = body.heliocentric_position(jd)
         print(f"  {str(body):<8s} {pos.distance():.6f} AU")
     print()
@@ -64,8 +71,10 @@ def main():
 
     moon_geo = Body.Moon.geocentric_position(jd)
     moon_au = moon_geo.to_unit("au")
-    print(f"Moon geocentric distance (ELP2000): {moon_geo.distance():.1f} km "
-          f"({moon_au.distance():.6f} AU)\n")
+    print(
+        f"Moon geocentric distance (ELP2000): {moon_geo.distance():.1f} km "
+        f"({moon_au.distance():.6f} AU)\n"
+    )
 
     # =========================================================================
     # 4. Barycentric vs Heliocentric
@@ -76,8 +85,7 @@ def main():
     for body in [Body.Mercury, Body.Venus, Body.Earth, Body.Mars]:
         helio = body.heliocentric_position(jd)
         bary = body.barycentric_position(jd)
-        print(f"  {str(body):<8s} helio={helio.distance():.5f} AU  "
-              f"bary={bary.distance():.5f} AU")
+        print(f"  {str(body):<8s} helio={helio.distance():.5f} AU  bary={bary.distance():.5f} AU")
     print()
 
     # =========================================================================
@@ -87,7 +95,7 @@ def main():
     print("-------------------------------------------")
 
     mars_geo_eq = mars_helio.transform("EquatorialMeanJ2000", "Geocentric", jd)
-    print(f"Mars (Geocentric EquatorialMeanJ2000):")
+    print("Mars (Geocentric EquatorialMeanJ2000):")
     print(f"  X = {mars_geo_eq.x:.6f} AU")
     print(f"  Y = {mars_geo_eq.y:.6f} AU")
     print(f"  Z = {mars_geo_eq.z:.6f} AU")

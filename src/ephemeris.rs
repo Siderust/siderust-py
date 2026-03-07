@@ -8,7 +8,9 @@ use pyo3::prelude::*;
 use siderust::calculus::ephemeris::{DynEphemeris, RuntimeEphemeris};
 use tempoch::JulianDate;
 
-use crate::position::{PyPosition, CENTER_BARY, CENTER_GEO, CENTER_HELIO, FRAME_ECL, UNIT_AU, UNIT_KM};
+use crate::position::{
+    PyPosition, CENTER_BARY, CENTER_GEO, CENTER_HELIO, FRAME_ECL, UNIT_AU, UNIT_KM,
+};
 
 /// A runtime-loaded JPL DE4xx ephemeris backend.
 ///

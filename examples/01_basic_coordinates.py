@@ -6,8 +6,6 @@ Mirrors: siderust/examples/01_basic_coordinates.rs
 Run with: python examples/01_basic_coordinates.py
 """
 
-import math
-
 from siderust import Direction, Position, SphericalPosition
 
 
@@ -21,9 +19,9 @@ def main():
     print("------------------------")
 
     # Create a heliocentric ecliptic position (1 AU along X-axis)
-    earth_position = Position(1.0, 0.0, 0.0,
-                              frame="EclipticMeanJ2000",
-                              center="Heliocentric", unit="au")
+    earth_position = Position(
+        1.0, 0.0, 0.0, frame="EclipticMeanJ2000", center="Heliocentric", unit="au"
+    )
     print("Earth position (Heliocentric EclipticMeanJ2000):")
     print(f"  X = {earth_position.x:.6f} AU")
     print(f"  Y = {earth_position.y:.6f} AU")
@@ -31,9 +29,9 @@ def main():
     print(f"  Distance from Sun = {earth_position.distance():.6f} AU\n")
 
     # Create a geocentric equatorial position (Moon at ~384,400 km)
-    moon_position = Position(300_000.0, 200_000.0, 100_000.0,
-                             frame="EquatorialMeanJ2000",
-                             center="Geocentric", unit="km")
+    moon_position = Position(
+        300_000.0, 200_000.0, 100_000.0, frame="EquatorialMeanJ2000", center="Geocentric", unit="km"
+    )
     print("Moon position (Geocentric EquatorialMeanJ2000):")
     print(f"  X = {moon_position.x:.1f} km")
     print(f"  Y = {moon_position.y:.1f} km")
@@ -55,8 +53,12 @@ def main():
     # Create a spherical position with distance (Betelgeuse at ~500 ly)
     betelgeuse_distance = 500.0 * 9.461e15 / 1.496e11  # Convert ly to AU
     betelgeuse = SphericalPosition(
-        lon_deg=88.79, lat_deg=7.41, distance=betelgeuse_distance,
-        frame="ICRS", center="Barycentric", unit="au",
+        lon_deg=88.79,
+        lat_deg=7.41,
+        distance=betelgeuse_distance,
+        frame="ICRS",
+        center="Barycentric",
+        unit="au",
     )
     print("Betelgeuse (Barycentric ICRS Position):")
     print(f"  Right Ascension = {betelgeuse.lon_deg:.2f}°")
@@ -82,9 +84,9 @@ def main():
     print("-----------------------------------")
 
     # Start with cartesian
-    cart_pos = Position(0.5, 0.5, 0.707,
-                        frame="EquatorialMeanJ2000",
-                        center="Barycentric", unit="au")
+    cart_pos = Position(
+        0.5, 0.5, 0.707, frame="EquatorialMeanJ2000", center="Barycentric", unit="au"
+    )
     print("Cartesian position:")
     print(f"  X = {cart_pos.x:.3f} AU")
     print(f"  Y = {cart_pos.y:.3f} AU")
@@ -110,12 +112,8 @@ def main():
     print("5. COORDINATE METADATA")
     print("----------------------")
 
-    helio_pos = Position(1.0, 0.0, 0.0,
-                         frame="EclipticMeanJ2000",
-                         center="Heliocentric", unit="au")
-    geo_pos = Position(0.0, 1.0, 0.0,
-                       frame="EquatorialMeanJ2000",
-                       center="Geocentric", unit="au")
+    helio_pos = Position(1.0, 0.0, 0.0, frame="EclipticMeanJ2000", center="Heliocentric", unit="au")
+    geo_pos = Position(0.0, 1.0, 0.0, frame="EquatorialMeanJ2000", center="Geocentric", unit="au")
 
     print("Coordinate metadata prevents mixing incompatible systems:")
     print(f"  Heliocentric EclipticMeanJ2000: {helio_pos}")
@@ -123,12 +121,8 @@ def main():
     print("\n  Must transform to same center/frame before computing distance!\n")
 
     # Operations within the same type work fine
-    pos1 = Position(1.0, 0.0, 0.0,
-                    frame="EclipticMeanJ2000",
-                    center="Heliocentric", unit="au")
-    pos2 = Position(1.5, 0.0, 0.0,
-                    frame="EclipticMeanJ2000",
-                    center="Heliocentric", unit="au")
+    pos1 = Position(1.0, 0.0, 0.0, frame="EclipticMeanJ2000", center="Heliocentric", unit="au")
+    pos2 = Position(1.5, 0.0, 0.0, frame="EclipticMeanJ2000", center="Heliocentric", unit="au")
     distance = pos1.distance_to(pos2)
     print("Distance between two Heliocentric EclipticMeanJ2000 positions:")
     print(f"  {distance:.3f} AU\n")

@@ -21,15 +21,13 @@ from siderust import (
     Body,
     Comet,
     Direction,
-    Orbit,
     Observer,
+    Orbit,
     Position,
     ProperMotion,
     SphericalPosition,
     Star,
-    Target,
 )
-
 
 J2000 = 2451545.0
 
@@ -49,7 +47,7 @@ def section_time_values():
     print("1) TIME VALUES")
     print("--------------")
 
-    from tempoch import JulianDate, ModifiedJulianDate
+    from tempoch import JulianDate
 
     jd = JulianDate(J2000)
     mjd = jd.to_mjd()
@@ -76,8 +74,7 @@ def section_coordinates():
     print("---------------------")
 
     # Cartesian position
-    geo_pos = Position(6371.0, 0.0, 0.0,
-                       frame="ICRS", center="Geocentric", unit="km")
+    geo_pos = Position(6371.0, 0.0, 0.0, frame="ICRS", center="Geocentric", unit="km")
     pos_dict = geo_pos.to_dict()
     print(f"Position dict: {json.dumps(pos_dict, indent=2)}")
 
@@ -86,8 +83,12 @@ def section_coordinates():
 
     # Spherical position
     helio_sph = SphericalPosition(
-        lon_deg=120.0, lat_deg=5.0, distance=1.2,
-        frame="EclipticMeanJ2000", center="Heliocentric", unit="au",
+        lon_deg=120.0,
+        lat_deg=5.0,
+        distance=1.2,
+        frame="EclipticMeanJ2000",
+        center="Heliocentric",
+        unit="au",
     )
     sph_dict = helio_sph.to_dict()
     print(f"SphericalPosition dict: {json.dumps(sph_dict, indent=2)}")
@@ -154,7 +155,7 @@ def section_body_objects():
         "orbit": halley.orbit.to_dict(),
         "heliocentric_ecliptic": halley_pos.to_dict(),
     }
-    print(f"Halley snapshot JSON:")
+    print("Halley snapshot JSON:")
     print(json.dumps(snapshot, indent=2))
 
     recovered = json.loads(json.dumps(snapshot))
@@ -180,7 +181,7 @@ def section_targets():
         "epoch": mars_target.time,
         "position": mars_target.position.to_dict(),
     }
-    print(f"Mars target JSON:")
+    print("Mars target JSON:")
     print(json.dumps(mars_data, indent=2))
 
     recovered = json.loads(json.dumps(mars_data))
@@ -197,15 +198,12 @@ def section_targets():
         "epoch": sirius_target.time,
         "direction": sirius_target.direction.to_dict(),
     }
-    print(f"Sirius target JSON:")
+    print("Sirius target JSON:")
     print(json.dumps(star_data, indent=2))
 
     recovered = json.loads(json.dumps(star_data))
     recovered_dir = Direction.from_dict(recovered["direction"])
-    print(
-        f"Roundtrip check: {recovered['star']} target, "
-        f"RA={recovered_dir.ra_deg:.4f}°\n"
-    )
+    print(f"Roundtrip check: {recovered['star']} target, RA={recovered_dir.ra_deg:.4f}°\n")
 
 
 def section_proper_motion():
@@ -236,10 +234,7 @@ def section_file_io():
     # Build a composite snapshot
     data = {
         "observer": Observer.roque_de_los_muchachos().to_dict(),
-        "stars": [
-            Star.catalog(name).to_dict()
-            for name in ["Sirius", "Betelgeuse", "Polaris"]
-        ],
+        "stars": [Star.catalog(name).to_dict() for name in ["Sirius", "Betelgeuse", "Polaris"]],
         "mars": Body.Mars.track(jd).position.to_dict(),
         "halley_orbit": Comet.halley().orbit.to_dict(),
     }

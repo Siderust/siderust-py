@@ -17,13 +17,11 @@ from siderust import (
     Comet,
     Direction,
     Orbit,
-    Position,
     ProperMotion,
     Star,
     Target,
     apply_proper_motion,
 )
-
 
 J2000 = 2451545.0
 JULIAN_YEAR = 365.25
@@ -75,8 +73,7 @@ def section_target_snapshots():
     # Create a target from a tracked body
     mars_target = Body.Mars.track(jd)
     print(
-        f"  Mars target at JD {mars_target.time:.1f}: "
-        f"r = {mars_target.position.distance():.6f} AU"
+        f"  Mars target at JD {mars_target.time:.1f}: r = {mars_target.position.distance():.6f} AU"
     )
 
     # Update with new position at next epoch

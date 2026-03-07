@@ -9,16 +9,14 @@ civil/nautical/astronomical/horizon thresholds.
 Run with: python examples/06_night_events.py
 """
 
-from datetime import datetime, timezone
-
 from siderust import (
-    Body,
-    CrossingDirection,
-    Observer,
     TWILIGHT_ASTRONOMICAL,
     TWILIGHT_CIVIL,
     TWILIGHT_HORIZON,
     TWILIGHT_NAUTICAL,
+    Body,
+    CrossingDirection,
+    Observer,
     below_threshold,
     crossings,
 )

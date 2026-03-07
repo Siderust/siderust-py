@@ -10,7 +10,7 @@ Shows:
 Run with: python examples/07_moon_properties.py
 """
 
-from siderust import Observer, find_moon_phases, moon_phase
+from siderust import find_moon_phases, moon_phase
 
 # MJD epoch offset
 _JD_TO_MJD = 2_400_000.5
@@ -35,8 +35,6 @@ def main():
     lon = -17.892
     h_m = 2396.0
 
-    observer = Observer(lon, lat, h_m)
-
     # Starting from 2023-10-01 00:00 UTC (JD ≈ 2460219.5)
     jd_start = 2_460_219.5
     mjd_start = jd_to_mjd(jd_start)
@@ -45,7 +43,7 @@ def main():
     # 1) Point-in-time phase properties
     phase = moon_phase(mjd_start)
 
-    print("Moon phase at MJD {:.1f}".format(mjd_start))
+    print(f"Moon phase at MJD {mjd_start:.1f}")
     print("==================================")
     print(f"Site: lat={lat:.4f}°, lon={lon:.4f}°, h={h_m:.0f} m")
 

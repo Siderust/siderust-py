@@ -217,13 +217,16 @@ impl PyStar {
     /// Create from a dictionary (custom star with RA/Dec; uses name and coordinates).
     #[staticmethod]
     fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
-        let name: String = d.get_item("name")?
+        let name: String = d
+            .get_item("name")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'name'"))?
             .extract()?;
-        let ra: f64 = d.get_item("ra_deg")?
+        let ra: f64 = d
+            .get_item("ra_deg")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'ra_deg'"))?
             .extract()?;
-        let dec: f64 = d.get_item("dec_deg")?
+        let dec: f64 = d
+            .get_item("dec_deg")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'dec_deg'"))?
             .extract()?;
         Ok(Self::from_ra_dec(&name, ra, dec))

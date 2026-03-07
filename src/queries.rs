@@ -282,7 +282,6 @@ pub fn culminations(
 /// - CIVIL: -6.0°
 /// - NAUTICAL: -12.0°
 /// - ASTRONOMICAL: -18.0°
-
 pub const TWILIGHT_HORIZON: f64 = 0.0;
 pub const TWILIGHT_CIVIL: f64 = -6.0;
 pub const TWILIGHT_NAUTICAL: f64 = -12.0;

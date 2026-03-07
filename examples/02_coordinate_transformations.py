@@ -25,9 +25,9 @@ def main():
     print("------------------------")
 
     # Start with ecliptic coordinates (heliocentric)
-    pos_ecliptic = Position(1.0, 0.0, 0.0,
-                            frame="EclipticMeanJ2000",
-                            center="Heliocentric", unit="au")
+    pos_ecliptic = Position(
+        1.0, 0.0, 0.0, frame="EclipticMeanJ2000", center="Heliocentric", unit="au"
+    )
     print("Original (Heliocentric EclipticMeanJ2000):")
     print(f"  X = {pos_ecliptic.x:.6f}")
     print(f"  Y = {pos_ecliptic.y:.6f}")
@@ -146,8 +146,7 @@ def main():
     print("5. ICRS FRAME TRANSFORMATIONS")
     print("-----------------------------")
 
-    star_icrs = Position(100.0, 50.0, 1000.0,
-                         frame="ICRS", center="Barycentric", unit="au")
+    star_icrs = Position(100.0, 50.0, 1000.0, frame="ICRS", center="Barycentric", unit="au")
     print("Star (Barycentric ICRS):")
     print(f"  X = {star_icrs.x:.3f}")
     print(f"  Y = {star_icrs.y:.3f}")

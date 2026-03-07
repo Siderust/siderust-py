@@ -3,8 +3,8 @@
 //! Maps to the concrete zero-sized body types in `siderust::bodies::solar_system`.
 //! Each variant can be used directly for altitude/azimuth queries.
 
-use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use qtty::*;
 use siderust::bodies::solar_system;
 use siderust::coordinates::centers::Geodetic;
@@ -14,7 +14,9 @@ use siderust::AzimuthProvider;
 use tempoch::{JulianDate, ModifiedJulianDate};
 
 use crate::observer::PyObserver;
-use crate::position::{PyPosition, FRAME_ECL, CENTER_HELIO, CENTER_BARY, CENTER_GEO, UNIT_AU, UNIT_KM};
+use crate::position::{
+    PyPosition, CENTER_BARY, CENTER_GEO, CENTER_HELIO, FRAME_ECL, UNIT_AU, UNIT_KM,
+};
 
 /// A solar system body for observation queries.
 ///
@@ -240,26 +242,37 @@ impl PyBody {
             ($body:ty) => {{
                 let p = <$body>::vsop87a(jd);
                 Ok(PyPosition::new_internal(
-                    p.x().value(), p.y().value(), p.z().value(),
-                    FRAME_ECL, CENTER_HELIO, UNIT_AU,
+                    p.x().value(),
+                    p.y().value(),
+                    p.z().value(),
+                    FRAME_ECL,
+                    CENTER_HELIO,
+                    UNIT_AU,
                 ))
             }};
         }
         match self {
             PyBody::Sun => {
                 // Sun at heliocentric origin
-                Ok(PyPosition::new_internal(0.0, 0.0, 0.0, FRAME_ECL, CENTER_HELIO, UNIT_AU))
+                Ok(PyPosition::new_internal(
+                    0.0,
+                    0.0,
+                    0.0,
+                    FRAME_ECL,
+                    CENTER_HELIO,
+                    UNIT_AU,
+                ))
             }
             PyBody::Moon => Err(PyValueError::new_err(
-                "Moon has no heliocentric VSOP87 model. Use Body.Moon.geocentric_position(jd)."
+                "Moon has no heliocentric VSOP87 model. Use Body.Moon.geocentric_position(jd).",
             )),
             PyBody::Mercury => vsop87a!(solar_system::Mercury),
-            PyBody::Venus   => vsop87a!(solar_system::Venus),
-            PyBody::Earth   => vsop87a!(solar_system::Earth),
-            PyBody::Mars    => vsop87a!(solar_system::Mars),
+            PyBody::Venus => vsop87a!(solar_system::Venus),
+            PyBody::Earth => vsop87a!(solar_system::Earth),
+            PyBody::Mars => vsop87a!(solar_system::Mars),
             PyBody::Jupiter => vsop87a!(solar_system::Jupiter),
-            PyBody::Saturn  => vsop87a!(solar_system::Saturn),
-            PyBody::Uranus  => vsop87a!(solar_system::Uranus),
+            PyBody::Saturn => vsop87a!(solar_system::Saturn),
+            PyBody::Uranus => vsop87a!(solar_system::Uranus),
             PyBody::Neptune => vsop87a!(solar_system::Neptune),
         }
     }
@@ -273,23 +286,27 @@ impl PyBody {
             ($body:ty) => {{
                 let p = <$body>::vsop87e(jd);
                 Ok(PyPosition::new_internal(
-                    p.x().value(), p.y().value(), p.z().value(),
-                    FRAME_ECL, CENTER_BARY, UNIT_AU,
+                    p.x().value(),
+                    p.y().value(),
+                    p.z().value(),
+                    FRAME_ECL,
+                    CENTER_BARY,
+                    UNIT_AU,
                 ))
             }};
         }
         match self {
-            PyBody::Sun     => vsop87e!(solar_system::Sun),
+            PyBody::Sun => vsop87e!(solar_system::Sun),
             PyBody::Moon => Err(PyValueError::new_err(
-                "Moon has no barycentric VSOP87 model. Use Body.Moon.geocentric_position(jd)."
+                "Moon has no barycentric VSOP87 model. Use Body.Moon.geocentric_position(jd).",
             )),
             PyBody::Mercury => vsop87e!(solar_system::Mercury),
-            PyBody::Venus   => vsop87e!(solar_system::Venus),
-            PyBody::Earth   => vsop87e!(solar_system::Earth),
-            PyBody::Mars    => vsop87e!(solar_system::Mars),
+            PyBody::Venus => vsop87e!(solar_system::Venus),
+            PyBody::Earth => vsop87e!(solar_system::Earth),
+            PyBody::Mars => vsop87e!(solar_system::Mars),
             PyBody::Jupiter => vsop87e!(solar_system::Jupiter),
-            PyBody::Saturn  => vsop87e!(solar_system::Saturn),
-            PyBody::Uranus  => vsop87e!(solar_system::Uranus),
+            PyBody::Saturn => vsop87e!(solar_system::Saturn),
+            PyBody::Uranus => vsop87e!(solar_system::Uranus),
             PyBody::Neptune => vsop87e!(solar_system::Neptune),
         }
     }

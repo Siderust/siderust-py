@@ -13,6 +13,8 @@ use tempoch::JulianDate;
 
 use crate::position::{PyPosition, CENTER_HELIO, FRAME_ECL, UNIT_AU};
 
+type OrbitReduceArgs = (f64, f64, f64, f64, f64, f64, f64);
+
 // =============================================================================
 // PyOrbit
 // =============================================================================
@@ -192,7 +194,7 @@ impl PyOrbit {
         )
     }
 
-    fn __reduce__(&self, py: Python<'_>) -> PyResult<(Py<PyAny>, (f64, f64, f64, f64, f64, f64, f64))> {
+    fn __reduce__(&self, py: Python<'_>) -> PyResult<(Py<PyAny>, OrbitReduceArgs)> {
         let cls = py.get_type::<Self>().into_any().unbind();
         Ok((
             cls,
@@ -309,9 +311,7 @@ impl PyComet {
     /// Keplerian orbital elements.
     #[getter]
     fn orbit(&self) -> PyOrbit {
-        PyOrbit {
-            inner: self.orbit,
-        }
+        PyOrbit { inner: self.orbit }
     }
 
     /// Orbit reference frame ("Heliocentric" or "Barycentric").

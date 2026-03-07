@@ -18,7 +18,6 @@ from datetime import datetime, timedelta, timezone
 
 from tempoch import (
     JulianDate,
-    ModifiedJulianDate,
     TimePeriod,
     TimeScale,
     convert_timescale,
@@ -48,17 +47,17 @@ def main() -> None:
     print("1) Each supported time scale for the same instant:")
 
     scales = [
-        ("JD",   TimeScale.JD),
-        ("JDE",  TimeScale.JDE),
-        ("MJD",  TimeScale.MJD),
-        ("TDB",  TimeScale.TDB),
-        ("TT",   TimeScale.TT),
-        ("TAI",  TimeScale.TAI),
-        ("TCG",  TimeScale.TCG),
-        ("TCB",  TimeScale.TCB),
-        ("GPS",  TimeScale.GPS),
+        ("JD", TimeScale.JD),
+        ("JDE", TimeScale.JDE),
+        ("MJD", TimeScale.MJD),
+        ("TDB", TimeScale.TDB),
+        ("TT", TimeScale.TT),
+        ("TAI", TimeScale.TAI),
+        ("TCG", TimeScale.TCG),
+        ("TCB", TimeScale.TCB),
+        ("GPS", TimeScale.GPS),
         ("Unix", TimeScale.UnixTime),
-        ("UT",   TimeScale.UT),
+        ("UT", TimeScale.UT),
     ]
 
     for label, scale in scales:
@@ -66,10 +65,7 @@ def main() -> None:
         # For roundtrip check, convert back to JD
         back = convert_timescale(val, scale, TimeScale.JD)
         drift_s = (back - jd_val) * 86400.0
-        print(
-            f"   {label:<10} value = {val:>18.9f}  "
-            f"| JD roundtrip drift = {drift_s:>11.3e} s"
-        )
+        print(f"   {label:<10} value = {val:>18.9f}  | JD roundtrip drift = {drift_s:>11.3e} s")
 
     # ΔT = TT − UT
     tt_val = convert_timescale(jd_val, TimeScale.JD, TimeScale.TT)
@@ -105,10 +101,7 @@ def main() -> None:
         start_val = convert_timescale(period.start.value, TimeScale.JD, scale)
         end_val = convert_timescale(period.end.value, TimeScale.JD, scale)
         duration = end_val - start_val
-        print(
-            f"   {label:<10} [{start_val:>18.9f} -> {end_val:>18.9f}]  "
-            f"Δ = {duration:.6f} days"
-        )
+        print(f"   {label:<10} [{start_val:>18.9f} -> {end_val:>18.9f}]  Δ = {duration:.6f} days")
 
     # UTC datetime period
     utc_start = jd.to_datetime()
@@ -135,15 +128,16 @@ def main() -> None:
         f"{utc_window_end.isoformat()}]  Δ = {utc_dur_days:.6f} days"
     )
 
-    for label, scale in [("JD", TimeScale.JD), ("MJD", TimeScale.MJD),
-                          ("UT", TimeScale.UT), ("Unix", TimeScale.UnixTime)]:
+    for label, scale in [
+        ("JD", TimeScale.JD),
+        ("MJD", TimeScale.MJD),
+        ("UT", TimeScale.UT),
+        ("Unix", TimeScale.UnixTime),
+    ]:
         s_val = convert_timescale(jd_start.value, TimeScale.JD, scale)
         e_val = convert_timescale(jd_window_end.value, TimeScale.JD, scale)
         dur = e_val - s_val
-        print(
-            f"   {label:<10} [{s_val:>18.9f} -> {e_val:>18.9f}]  "
-            f"Δ = {dur:.6f} days"
-        )
+        print(f"   {label:<10} [{s_val:>18.9f} -> {e_val:>18.9f}]  Δ = {dur:.6f} days")
 
     # MJD -> UTC roundtrip
     mjd_start = jd_start.to_mjd()
