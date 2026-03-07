@@ -45,7 +45,7 @@ print(f"Vega altitude at midnight: {alt:.2f}°")
 |------|-----|
 | **Observers** | `Observer(lon, lat, h)`, `.roque_de_los_muchachos()`, `.el_paranal()`, `.mauna_kea()`, `.la_silla()` |
 | **Bodies** | `Body.Sun`, `.Moon`, `.Mercury` … `.Neptune` |
-| **Stars** | `Star.catalog("Vega")`, `Star.from_ra_dec(name, ra, dec)` |
+| **Stars** | `Star.catalog("Vega")`, `Star.custom(name, ra, dec, distance_ly, mass, radius, lum)` |
 | **Directions** | `Direction(ra_deg, dec_deg)` — fixed ICRS position |
 | **Altitude** | `altitude_at()`, `above_threshold()`, `below_threshold()` |
 | **Events** | `crossings()`, `culminations()` |
@@ -85,7 +85,21 @@ Body.Sun.azimuth_at(observer, mjd)   # degrees
 
 ```python
 vega = Star.catalog("Vega")       # built-in catalog
-s = Star.from_ra_dec("X", 10, 20) # custom RA/Dec
+
+# For coordinate-only queries (altitude/azimuth from RA/Dec), use Direction:
+d = Direction(ra_deg=10.0, dec_deg=20.0)
+d.altitude_at(obs, mjd)
+
+# For stars with full physical parameters:
+star = Star.custom(
+    name="Proxima Centauri",
+    ra_deg=217.429,
+    dec_deg=-62.679,
+    distance_ly=4.24,
+    mass_solar=0.12,
+    radius_solar=0.15,
+    luminosity_solar=0.0017
+)
 
 vega.name           # "Vega"
 vega.ra_deg          # right ascension

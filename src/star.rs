@@ -72,12 +72,28 @@ impl PyStar {
 
     /// Create a star with custom RA/Dec coordinates.
     ///
+    /// .. deprecated::
+    ///     Use `Direction(ra_deg, dec_deg)` for coordinate-only sky positions.
+    ///     This method creates a Star with placeholder physical properties
+    ///     (distance=1 ly, mass=1 M☉, radius=1 R☉, luminosity=1 L☉), which
+    ///     is misleading. Use `Star.custom()` if you need a full Star object
+    ///     with real physical parameters.
+    ///
+    /// For altitude/azimuth queries from RA/Dec alone, prefer::
+    ///
+    ///     from siderust import Direction
+    ///     d = Direction(ra_deg=123.456, dec_deg=45.678)
+    ///     alt = d.altitude_at(observer, mjd)
+    ///
     /// Args:
     ///     name: Display name for the star.
     ///     ra_deg: Right ascension in degrees.
     ///     dec_deg: Declination in degrees.
     #[staticmethod]
     fn from_ra_dec(name: &str, ra_deg: f64, dec_deg: f64) -> Self {
+        // NOTE: This method is deprecated. Creates a star with placeholder
+        // physical properties which is misleading. Users should use Direction
+        // for coordinate-only queries or Star.custom for full star properties.
         use siderust::coordinates::centers::Geocentric;
         use siderust::coordinates::frames::EquatorialMeanJ2000;
         use siderust::targets::CoordinateWithPM;
@@ -98,6 +114,66 @@ impl PyStar {
                 SolarMasses::new(1.0),
                 qtty::length::nominal::SolarRadiuses::new(1.0),
                 SolarLuminosities::new(1.0),
+                coord,
+            ),
+        }
+    }
+
+    /// Create a star with full physical parameters.
+    ///
+    /// Use this method when you have complete stellar metadata. For coordinate-only
+    /// sky positions (e.g., for altitude/azimuth queries), prefer `Direction` instead.
+    ///
+    /// Args:
+    ///     name: Display name for the star.
+    ///     ra_deg: Right ascension in degrees.
+    ///     dec_deg: Declination in degrees.
+    ///     distance_ly: Distance in light-years.
+    ///     mass_solar: Mass in solar masses.
+    ///     radius_solar: Radius in solar radii.
+    ///     luminosity_solar: Luminosity in solar luminosities.
+    ///
+    /// Example:
+    ///     >>> star = Star.custom(
+    ///     ...     name="Proxima Centauri",
+    ///     ...     ra_deg=217.429,
+    ///     ...     dec_deg=-62.679,
+    ///     ...     distance_ly=4.24,
+    ///     ...     mass_solar=0.12,
+    ///     ...     radius_solar=0.15,
+    ///     ...     luminosity_solar=0.0017
+    ///     ... )
+    #[staticmethod]
+    #[pyo3(signature = (name, ra_deg, dec_deg, distance_ly, mass_solar, radius_solar, luminosity_solar))]
+    fn custom(
+        name: &str,
+        ra_deg: f64,
+        dec_deg: f64,
+        distance_ly: f64,
+        mass_solar: f64,
+        radius_solar: f64,
+        luminosity_solar: f64,
+    ) -> Self {
+        use siderust::coordinates::centers::Geocentric;
+        use siderust::coordinates::frames::EquatorialMeanJ2000;
+        use siderust::targets::CoordinateWithPM;
+        use tempoch::JulianDate;
+
+        let pos = affn::spherical::Position::<Geocentric, EquatorialMeanJ2000, LightYear>::new(
+            Degrees::new(ra_deg),
+            Degrees::new(dec_deg),
+            LightYears::new(distance_ly),
+        );
+
+        let coord = CoordinateWithPM::new_static(pos, JulianDate::J2000);
+
+        Self {
+            inner: Star::new(
+                name.to_string(),
+                LightYears::new(distance_ly),
+                SolarMasses::new(mass_solar),
+                qtty::length::nominal::SolarRadiuses::new(radius_solar),
+                SolarLuminosities::new(luminosity_solar),
                 coord,
             ),
         }
