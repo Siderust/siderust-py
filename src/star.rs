@@ -1,0 +1,191 @@
+//! Star type for Python.
+//!
+//! Wraps `siderust::bodies::Star<'static>` with catalog lookup and
+//! custom construction.
+
+use pyo3::prelude::*;
+use qtty::*;
+use siderust::bodies::catalog;
+use siderust::bodies::Star;
+use siderust::coordinates::spherical::direction;
+use siderust::AltitudePeriodsProvider;
+use siderust::AzimuthProvider;
+use tempoch::ModifiedJulianDate;
+
+use crate::errors::unknown_star_error;
+use crate::observer::PyObserver;
+
+/// A star with physical properties and sky coordinates.
+///
+/// Create from the built-in catalog or with custom RA/Dec:
+///
+/// >>> vega = Star.catalog("Vega")
+/// >>> custom = Star.from_ra_dec("HD 12345", 123.456, 45.678)
+#[pyclass(name = "Star", module = "siderust", from_py_object)]
+#[derive(Clone)]
+pub struct PyStar {
+    pub(crate) inner: Star<'static>,
+}
+
+impl PyStar {
+    pub fn from_inner(inner: Star<'static>) -> Self {
+        Self { inner }
+    }
+}
+
+/// Look up a star by name from the built-in catalog.
+fn lookup_star(name: &str) -> Option<Star<'static>> {
+    let lower = name.to_lowercase();
+    match lower.as_str() {
+        "sirius" => Some(catalog::SIRIUS.clone()),
+        "vega" => Some(catalog::VEGA.clone()),
+        "polaris" => Some(catalog::POLARIS.clone()),
+        "canopus" => Some(catalog::CANOPUS.clone()),
+        "arcturus" => Some(catalog::ARCTURUS.clone()),
+        "rigel" => Some(catalog::RIGEL.clone()),
+        "betelgeuse" => Some(catalog::BETELGEUSE.clone()),
+        "procyon" => Some(catalog::PROCYON.clone()),
+        "aldebaran" => Some(catalog::ALDEBARAN.clone()),
+        "altair" => Some(catalog::ALTAIR.clone()),
+        _ => None,
+    }
+}
+
+#[pymethods]
+impl PyStar {
+    /// Look up a star from the built-in catalog.
+    ///
+    /// Available stars: Sirius, Vega, Polaris, Canopus, Arcturus,
+    /// Rigel, Betelgeuse, Procyon, Aldebaran, Altair.
+    ///
+    /// Args:
+    ///     name: Star name (case-insensitive).
+    ///
+    /// Raises:
+    ///     ValueError: If the star name is not in the catalog.
+    #[staticmethod]
+    fn catalog(name: &str) -> PyResult<Self> {
+        lookup_star(name)
+            .map(Self::from_inner)
+            .ok_or_else(|| unknown_star_error(name))
+    }
+
+    /// Create a star with custom RA/Dec coordinates.
+    ///
+    /// Args:
+    ///     name: Display name for the star.
+    ///     ra_deg: Right ascension in degrees.
+    ///     dec_deg: Declination in degrees.
+    #[staticmethod]
+    fn from_ra_dec(name: &str, ra_deg: f64, dec_deg: f64) -> Self {
+        use siderust::coordinates::centers::Geocentric;
+        use siderust::coordinates::frames::EquatorialMeanJ2000;
+        use siderust::targets::CoordinateWithPM;
+        use tempoch::JulianDate;
+
+        let pos = affn::spherical::Position::<Geocentric, EquatorialMeanJ2000, LightYear>::new(
+            Degrees::new(ra_deg),
+            Degrees::new(dec_deg),
+            LightYears::new(1.0), // Placeholder distance
+        );
+
+        let coord = CoordinateWithPM::new_static(pos, JulianDate::J2000);
+
+        Self {
+            inner: Star::new(
+                name.to_string(),
+                LightYears::new(1.0),
+                SolarMasses::new(1.0),
+                qtty::length::nominal::SolarRadiuses::new(1.0),
+                SolarLuminosities::new(1.0),
+                coord,
+            ),
+        }
+    }
+
+    // ── Properties ────────────────────────────────────────────────────
+
+    /// Star name.
+    #[getter]
+    fn name(&self) -> &str {
+        &self.inner.name
+    }
+
+    /// Distance in light-years.
+    #[getter]
+    fn distance_ly(&self) -> f64 {
+        self.inner.distance.value()
+    }
+
+    /// Mass in solar masses.
+    #[getter]
+    fn mass_solar(&self) -> f64 {
+        self.inner.mass.value()
+    }
+
+    /// Luminosity in solar luminosities.
+    #[getter]
+    fn luminosity_solar(&self) -> f64 {
+        self.inner.luminosity.value()
+    }
+
+    /// Right ascension in degrees.
+    #[getter]
+    fn ra_deg(&self) -> f64 {
+        let icrs: direction::ICRS = (&self.inner).into();
+        icrs.azimuth.to::<Degree>().value()
+    }
+
+    /// Declination in degrees.
+    #[getter]
+    fn dec_deg(&self) -> f64 {
+        let icrs: direction::ICRS = (&self.inner).into();
+        icrs.polar.to::<Degree>().value()
+    }
+
+    // ── Observation methods ───────────────────────────────────────────
+
+    /// Altitude of this star in degrees at the given observer and MJD.
+    fn altitude_at(&self, observer: &PyObserver, mjd: f64) -> f64 {
+        self.inner
+            .altitude_at(&observer.inner, ModifiedJulianDate::new(mjd))
+            .to::<Degree>()
+            .value()
+    }
+
+    /// Azimuth of this star in degrees at the given observer and MJD.
+    fn azimuth_at(&self, observer: &PyObserver, mjd: f64) -> f64 {
+        self.inner
+            .azimuth_at(&observer.inner, ModifiedJulianDate::new(mjd))
+            .to::<Degree>()
+            .value()
+    }
+
+    // ── Dunder methods ────────────────────────────────────────────────
+
+    fn __repr__(&self) -> String {
+        format!("Star('{}')", self.inner.name)
+    }
+
+    fn __str__(&self) -> String {
+        format!(
+            "{} (RA={:.4}°, Dec={:.4}°, d={:.2} ly)",
+            self.inner.name,
+            self.ra_deg(),
+            self.dec_deg(),
+            self.inner.distance.value()
+        )
+    }
+
+    fn __eq__(&self, other: &PyStar) -> bool {
+        self.inner.name == other.inner.name
+    }
+
+    fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        self.inner.name.hash(&mut hasher);
+        hasher.finish()
+    }
+}
