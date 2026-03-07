@@ -1,0 +1,151 @@
+name: Siderust Python CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  PACKAGE_NAME: siderust
+
+jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install formatter
+        run: python -m pip install --upgrade pip ruff
+      - name: Check Rust formatting
+        run: cargo fmt --check
+      - name: Check Python formatting
+        run: python -m ruff format --check python tests examples
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install linters
+        run: python -m pip install --upgrade pip ruff
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Run ruff
+        run: python -m ruff check python tests examples
+
+  rust-test:
+    name: Rust Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run Rust tests
+        run: cargo test --all-targets
+
+  python-test:
+    name: Python Test (3.${{ matrix.python-minor }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-minor: ["8", "9", "10", "11", "12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Set up Python 3.${{ matrix.python-minor }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.${{ matrix.python-minor }}"
+          cache: pip
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest
+          python -m pip install .
+      - name: Run Python tests
+        run: |
+          tmpdir="$(mktemp -d)"
+          cd "$tmpdir"
+          python -m pytest --rootdir "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/tests"
+
+  coverage:
+    name: Coverage
+    if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install coverage dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pytest pytest-cov
+          python -m pip install .
+      - name: Run coverage
+        run: |
+          rm -f coverage.xml
+          rm -rf htmlcov
+          tmpdir="$(mktemp -d)"
+          cd "$tmpdir"
+          python -m pytest \
+            --rootdir "$GITHUB_WORKSPACE" \
+            --cov="${PACKAGE_NAME}" \
+            --cov-branch \
+            --cov-report=term-missing \
+            --cov-report=xml:"$GITHUB_WORKSPACE/coverage.xml" \
+            --cov-report=html:"$GITHUB_WORKSPACE/htmlcov" \
+            "$GITHUB_WORKSPACE/tests"
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: siderust-coverage
+          path: |
+            coverage.xml
+            htmlcov
+          retention-days: 7

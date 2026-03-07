@@ -6,17 +6,16 @@ Run:
 """
 
 from siderust import (
-    Observer,
     Body,
-    Star,
+    CrossingDirection,
     Direction,
+    Observer,
+    Star,
     altitude_at,
-    above_threshold,
+    azimuth_at,
     below_threshold,
     crossings,
-    azimuth_at,
     moon_phase,
-    CrossingDirection,
 )
 
 
@@ -39,14 +38,14 @@ def main():
 
     # ── 3. Find sunrise and sunset ───────────────────────────────
     events = crossings(Body.Sun, obs, mjd, mjd + 1.0, 0.0)
-    print(f"\n3. Sun crossings (horizon) over 1 day:")
+    print("\n3. Sun crossings (horizon) over 1 day:")
     for e in events:
         label = "Rise" if e.direction == CrossingDirection.Rising else "Set"
         print(f"   {label}: MJD {e.mjd:.6f}")
 
     # ── 4. Night-time periods ────────────────────────────────────
     night = below_threshold(Body.Sun, obs, mjd, mjd + 1.0, 0.0)
-    print(f"\n4. Night-time (Sun below horizon):")
+    print("\n4. Night-time (Sun below horizon):")
     for start, end in night:
         hours = (end - start) * 24.0
         print(f"   MJD {start:.4f} – {end:.4f} ({hours:.1f} hours)")
@@ -64,7 +63,6 @@ def main():
         print(f"   Azimuth:  {vega_az:.4f}°")
 
     # ── 6. Moon phase ────────────────────────────────────────────
-    jd = 2460000.0 + mjd - 59999.5  # approximate JD
     phase = moon_phase(2460000.5)
     print(f"\n6. Moon phase: {phase}")
 
