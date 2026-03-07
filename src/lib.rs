@@ -26,7 +26,7 @@ use events::{PyCrossingDirection, PyCrossingEvent, PyCulminationEvent, PyCulmina
 use observer::PyObserver;
 use orbit::{PyComet, PyOrbit};
 use phase::{PyMoonPhaseGeometry, PyMoonPhaseLabel, PyPhaseEvent, PyPhaseKind};
-use position::{PyPosition, PySphericalPosition};
+use position::{PyDisplacement, PyPosition, PySphericalPosition};
 use star::PyStar;
 use target::{PyProperMotion, PyTarget};
 
@@ -50,6 +50,7 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyStar>()?;
     m.add_class::<PyDirection>()?;
     m.add_class::<PyPosition>()?;
+    m.add_class::<PyDisplacement>()?;
     m.add_class::<PySphericalPosition>()?;
 
     // Event types

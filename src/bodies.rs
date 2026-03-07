@@ -58,13 +58,30 @@ pub enum PyBody {
 }
 
 impl PyBody {
+    /// Check if this body can be observed from Earth.
+    pub(crate) fn is_observable(&self) -> bool {
+        !matches!(self, PyBody::Earth)
+    }
+
+    /// Return an error for non-observable bodies.
+    pub(crate) fn require_observable(&self) -> PyResult<()> {
+        if self.is_observable() {
+            Ok(())
+        } else {
+            Err(PyValueError::new_err(
+                "Body.Earth cannot be observed from Earth. Use ephemeris APIs instead.",
+            ))
+        }
+    }
+
     /// Compute altitude for this body at a given observer and time.
     pub(crate) fn altitude_at_inner(
         &self,
         observer: &Geodetic<ECEF>,
         mjd: ModifiedJulianDate,
-    ) -> f64 {
-        match self {
+    ) -> PyResult<f64> {
+        self.require_observable()?;
+        Ok(match self {
             PyBody::Sun => solar_system::Sun
                 .altitude_at(observer, mjd)
                 .to::<Degree>()
@@ -81,7 +98,7 @@ impl PyBody {
                 .altitude_at(observer, mjd)
                 .to::<Degree>()
                 .value(),
-            PyBody::Earth => 0.0, // Cannot observe Earth from Earth
+            PyBody::Earth => unreachable!(), // Guarded by require_observable
             PyBody::Mars => solar_system::Mars
                 .altitude_at(observer, mjd)
                 .to::<Degree>()
@@ -102,7 +119,7 @@ impl PyBody {
                 .altitude_at(observer, mjd)
                 .to::<Degree>()
                 .value(),
-        }
+        })
     }
 
     /// Compute azimuth for this body at a given observer and time.
@@ -110,8 +127,9 @@ impl PyBody {
         &self,
         observer: &Geodetic<ECEF>,
         mjd: ModifiedJulianDate,
-    ) -> f64 {
-        match self {
+    ) -> PyResult<f64> {
+        self.require_observable()?;
+        Ok(match self {
             PyBody::Sun => solar_system::Sun
                 .azimuth_at(observer, mjd)
                 .to::<Degree>()
@@ -128,7 +146,7 @@ impl PyBody {
                 .azimuth_at(observer, mjd)
                 .to::<Degree>()
                 .value(),
-            PyBody::Earth => 0.0, // Cannot observe Earth from Earth
+            PyBody::Earth => unreachable!(), // Guarded by require_observable
             PyBody::Mars => solar_system::Mars
                 .azimuth_at(observer, mjd)
                 .to::<Degree>()
@@ -149,7 +167,7 @@ impl PyBody {
                 .azimuth_at(observer, mjd)
                 .to::<Degree>()
                 .value(),
-        }
+        })
     }
 }
 
@@ -175,10 +193,10 @@ macro_rules! dispatch_body {
                 $action
             }
             PyBody::Earth => {
-                // Earth has no altitude/azimuth provider; dispatch as Sun
-                // (callers that dispatch for observation should guard against Earth)
-                let $provider = siderust::bodies::solar_system::Sun;
-                $action
+                // This branch should never be reached for observation queries.
+                // Callers must guard against Earth before dispatching.
+                panic!("dispatch_body called with Body.Earth for observation query. \
+                        Use require_observable() to guard against this case.");
             }
             PyBody::Mars => {
                 let $provider = siderust::bodies::solar_system::Mars;
@@ -216,7 +234,10 @@ impl PyBody {
     ///
     /// Returns:
     ///     Altitude in degrees.
-    fn altitude_at(&self, observer: &PyObserver, mjd: f64) -> f64 {
+    ///
+    /// Raises:
+    ///     ValueError: If the body is Earth (cannot observe Earth from Earth).
+    fn altitude_at(&self, observer: &PyObserver, mjd: f64) -> PyResult<f64> {
         self.altitude_at_inner(&observer.inner, ModifiedJulianDate::new(mjd))
     }
 
@@ -228,7 +249,10 @@ impl PyBody {
     ///
     /// Returns:
     ///     Azimuth in degrees (North = 0, East = 90).
-    fn azimuth_at(&self, observer: &PyObserver, mjd: f64) -> f64 {
+    ///
+    /// Raises:
+    ///     ValueError: If the body is Earth (cannot observe Earth from Earth).
+    fn azimuth_at(&self, observer: &PyObserver, mjd: f64) -> PyResult<f64> {
         self.azimuth_at_inner(&observer.inner, ModifiedJulianDate::new(mjd))
     }
 

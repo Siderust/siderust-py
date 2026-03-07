@@ -15,6 +15,7 @@ from siderust._siderust import (
     Star,
     Direction,
     Position,
+    Displacement,
     SphericalPosition,
     # Event types
     CrossingEvent,
@@ -59,6 +60,7 @@ __all__ = [
     "Star",
     "Direction",
     "Position",
+    "Displacement",
     "SphericalPosition",
     # Event types
     "CrossingEvent",

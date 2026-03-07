@@ -19,30 +19,31 @@ use crate::star::PyStar;
 // Helper: dispatch to the right provider based on what the user passed
 // ═══════════════════════════════════════════════════════════════════════════
 
+use siderust::bodies::Star as SiderustStar;
+use siderust::coordinates::spherical::direction::ICRS as SiderustDirection;
+
 /// Enum to unify the different subject types for dispatch.
-enum Subject<'a> {
+/// Owns copies of the inner Rust types to avoid unsafe lifetime hacks.
+enum Subject {
     Body(PyBody),
-    Star(&'a PyStar),
-    Dir(&'a PyDirection),
+    Star(SiderustStar<'static>),
+    Dir(SiderustDirection),
 }
 
 /// A Python-friendly "subject" that can be a Body, Star, or Direction.
 /// We accept `&Bound<'_, PyAny>` and try to extract each type.
-fn extract_subject<'a>(target: &'a Bound<'_, PyAny>) -> PyResult<Subject<'a>> {
+fn extract_subject(target: &Bound<'_, PyAny>) -> PyResult<Subject> {
     // Try Body enum first
     if let Ok(body) = target.extract::<PyBody>() {
         return Ok(Subject::Body(body));
     }
-    // Try Star
+    // Try Star - clone the inner Rust type
     if let Ok(star) = target.extract::<PyRef<'_, PyStar>>() {
-        // We need to clone to avoid lifetime issues
-        return Ok(Subject::Star(unsafe { &*(star.as_ptr() as *const PyStar) }));
+        return Ok(Subject::Star(star.inner.clone()));
     }
-    // Try Direction
+    // Try Direction - clone the inner Rust type
     if let Ok(dir) = target.extract::<PyRef<'_, PyDirection>>() {
-        return Ok(Subject::Dir(unsafe {
-            &*(dir.as_ptr() as *const PyDirection)
-        }));
+        return Ok(Subject::Dir(dir.inner.clone()));
     }
     Err(pyo3::exceptions::PyTypeError::new_err(
         "target must be a Body, Star, or Direction",
@@ -79,14 +80,12 @@ fn make_window(start_mjd: f64, end_mjd: f64) -> PyResult<tempoch::Period<MJD>> {
 pub fn altitude_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) -> PyResult<f64> {
     let t = ModifiedJulianDate::new(mjd);
     match extract_subject(target)? {
-        Subject::Body(body) => Ok(body.altitude_at_inner(&observer.inner, t)),
+        Subject::Body(body) => body.altitude_at_inner(&observer.inner, t),
         Subject::Star(star) => Ok(star
-            .inner
             .altitude_at(&observer.inner, t)
             .to::<Degree>()
             .value()),
         Subject::Dir(dir) => Ok(dir
-            .inner
             .altitude_at(&observer.inner, t)
             .to::<Degree>()
             .value()),
@@ -107,14 +106,12 @@ pub fn azimuth_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) ->
     use siderust::AzimuthProvider;
     let t = ModifiedJulianDate::new(mjd);
     match extract_subject(target)? {
-        Subject::Body(body) => Ok(body.azimuth_at_inner(&observer.inner, t)),
+        Subject::Body(body) => body.azimuth_at_inner(&observer.inner, t),
         Subject::Star(star) => Ok(star
-            .inner
             .azimuth_at(&observer.inner, t)
             .to::<Degree>()
             .value()),
         Subject::Dir(dir) => Ok(dir
-            .inner
             .azimuth_at(&observer.inner, t)
             .to::<Degree>()
             .value()),
@@ -145,14 +142,17 @@ pub fn above_threshold(
     let opts = SearchOpts::default();
 
     let periods = match extract_subject(target)? {
-        Subject::Body(body) => dispatch_body!(body, |p| {
-            siderust::above_threshold(&p, &observer.inner, window, threshold, opts)
-        }),
+        Subject::Body(body) => {
+            body.require_observable()?;
+            dispatch_body!(body, |p| {
+                siderust::above_threshold(&p, &observer.inner, window, threshold, opts)
+            })
+        }
         Subject::Star(star) => {
-            siderust::above_threshold(&star.inner, &observer.inner, window, threshold, opts)
+            siderust::above_threshold(&star, &observer.inner, window, threshold, opts)
         }
         Subject::Dir(dir) => {
-            siderust::above_threshold(&dir.inner, &observer.inner, window, threshold, opts)
+            siderust::above_threshold(&dir, &observer.inner, window, threshold, opts)
         }
     };
 
@@ -186,14 +186,17 @@ pub fn below_threshold(
     let opts = SearchOpts::default();
 
     let periods = match extract_subject(target)? {
-        Subject::Body(body) => dispatch_body!(body, |p| {
-            siderust::below_threshold(&p, &observer.inner, window, threshold, opts)
-        }),
+        Subject::Body(body) => {
+            body.require_observable()?;
+            dispatch_body!(body, |p| {
+                siderust::below_threshold(&p, &observer.inner, window, threshold, opts)
+            })
+        }
         Subject::Star(star) => {
-            siderust::below_threshold(&star.inner, &observer.inner, window, threshold, opts)
+            siderust::below_threshold(&star, &observer.inner, window, threshold, opts)
         }
         Subject::Dir(dir) => {
-            siderust::below_threshold(&dir.inner, &observer.inner, window, threshold, opts)
+            siderust::below_threshold(&dir, &observer.inner, window, threshold, opts)
         }
     };
 
@@ -227,14 +230,17 @@ pub fn crossings(
     let opts = SearchOpts::default();
 
     let events = match extract_subject(target)? {
-        Subject::Body(body) => dispatch_body!(body, |p| {
-            siderust::crossings(&p, &observer.inner, window, threshold, opts)
-        }),
+        Subject::Body(body) => {
+            body.require_observable()?;
+            dispatch_body!(body, |p| {
+                siderust::crossings(&p, &observer.inner, window, threshold, opts)
+            })
+        }
         Subject::Star(star) => {
-            siderust::crossings(&star.inner, &observer.inner, window, threshold, opts)
+            siderust::crossings(&star, &observer.inner, window, threshold, opts)
         }
         Subject::Dir(dir) => {
-            siderust::crossings(&dir.inner, &observer.inner, window, threshold, opts)
+            siderust::crossings(&dir, &observer.inner, window, threshold, opts)
         }
     };
 
@@ -262,11 +268,14 @@ pub fn culminations(
     let opts = SearchOpts::default();
 
     let events = match extract_subject(target)? {
-        Subject::Body(body) => dispatch_body!(body, |p| {
-            siderust::culminations(&p, &observer.inner, window, opts)
-        }),
-        Subject::Star(star) => siderust::culminations(&star.inner, &observer.inner, window, opts),
-        Subject::Dir(dir) => siderust::culminations(&dir.inner, &observer.inner, window, opts),
+        Subject::Body(body) => {
+            body.require_observable()?;
+            dispatch_body!(body, |p| {
+                siderust::culminations(&p, &observer.inner, window, opts)
+            })
+        }
+        Subject::Star(star) => siderust::culminations(&star, &observer.inner, window, opts),
+        Subject::Dir(dir) => siderust::culminations(&dir, &observer.inner, window, opts),
     };
 
     Ok(events.into_iter().map(PyCulminationEvent::from).collect())

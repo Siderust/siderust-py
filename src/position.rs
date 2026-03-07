@@ -232,7 +232,7 @@ fn convert_center(
 ///     ...                center="Heliocentric", unit="au")
 ///     >>> pos.distance()
 ///     1.0
-#[pyclass(name = "Position", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "Position", module = "siderust", from_py_object)]
 #[derive(Clone)]
 pub struct PyPosition {
     pub(crate) x: f64,
@@ -478,14 +478,79 @@ impl PyPosition {
 
     // ── Arithmetic ──────────────────────────────────────────────────
 
-    /// Subtract another position (same frame/center/unit), returning (dx, dy, dz).
-    fn __sub__(&self, other: &PyPosition) -> PyResult<(f64, f64, f64)> {
-        if self.frame != other.frame || self.center != other.center || self.unit != other.unit {
+    /// Subtract another position (same frame/center/unit), returning a Displacement.
+    ///
+    /// This is the only valid Position-Position operation in affine geometry.
+    /// The result is a center-independent displacement vector.
+    ///
+    /// Args:
+    ///     other: Position in the same frame, center, and unit.
+    ///
+    /// Returns:
+    ///     Displacement representing the vector from other to self.
+    ///
+    /// Raises:
+    ///     ValueError: If frame, center, or unit do not match.
+    fn __sub__(&self, other: PositionOrDisplacement) -> PyResult<PositionOrDisplacement> {
+        match other {
+            PositionOrDisplacement::Position(pos) => {
+                if self.frame != pos.frame || self.center != pos.center || self.unit != pos.unit {
+                    return Err(PyValueError::new_err(
+                        "subtraction requires same frame, center, and unit",
+                    ));
+                }
+                Ok(PositionOrDisplacement::Displacement(PyDisplacement {
+                    dx: self.x - pos.x,
+                    dy: self.y - pos.y,
+                    dz: self.z - pos.z,
+                    frame: self.frame.clone(),
+                    unit: self.unit.clone(),
+                }))
+            }
+            PositionOrDisplacement::Displacement(disp) => {
+                if self.frame != disp.frame || self.unit != disp.unit {
+                    return Err(PyValueError::new_err(
+                        "subtraction requires same frame and unit",
+                    ));
+                }
+                Ok(PositionOrDisplacement::Position(PyPosition {
+                    x: self.x - disp.dx,
+                    y: self.y - disp.dy,
+                    z: self.z - disp.dz,
+                    frame: self.frame.clone(),
+                    center: self.center.clone(),
+                    unit: self.unit.clone(),
+                }))
+            }
+        }
+    }
+
+    /// Add a displacement to this position.
+    ///
+    /// Translates the position by the displacement vector.
+    ///
+    /// Args:
+    ///     other: Displacement in the same frame and unit.
+    ///
+    /// Returns:
+    ///     New Position offset by the displacement.
+    ///
+    /// Raises:
+    ///     ValueError: If frame or unit do not match.
+    fn __add__(&self, other: &PyDisplacement) -> PyResult<PyPosition> {
+        if self.frame != other.frame || self.unit != other.unit {
             return Err(PyValueError::new_err(
-                "subtraction requires same frame, center, and unit",
+                "addition requires same frame and unit",
             ));
         }
-        Ok((self.x - other.x, self.y - other.y, self.z - other.z))
+        Ok(PyPosition {
+            x: self.x + other.dx,
+            y: self.y + other.dy,
+            z: self.z + other.dz,
+            frame: self.frame.clone(),
+            center: self.center.clone(),
+            unit: self.unit.clone(),
+        })
     }
 
     // ── Display ─────────────────────────────────────────────────────
@@ -767,6 +832,256 @@ impl PySphericalPosition {
                 self.unit.clone(),
             ),
         ))
+    }
+}
+
+// =============================================================================
+// PyDisplacement — center-independent displacement vector
+// =============================================================================
+
+type DisplacementReduceArgs = (f64, f64, f64, String, String);
+
+/// A 3D displacement vector with frame and unit metadata.
+///
+/// Displacements are center-independent; they represent the difference between
+/// two positions. This mirrors Rust's `affn::cartesian::Displacement<F, U>`.
+///
+/// Valid operations:
+/// - Displacement + Displacement -> Displacement
+/// - Displacement - Displacement -> Displacement
+/// - Position + Displacement -> Position
+/// - Position - Displacement -> Position
+/// - Position - Position -> Displacement
+///
+/// Example:
+///     >>> pos1 = Position(1.0, 0.0, 0.0, frame="ICRS", center="Barycentric", unit="au")
+///     >>> pos2 = Position(2.0, 0.0, 0.0, frame="ICRS", center="Barycentric", unit="au")
+///     >>> disp = pos2 - pos1  # Returns Displacement
+///     >>> disp.dx
+///     1.0
+#[pyclass(name = "Displacement", module = "siderust", from_py_object)]
+#[derive(Clone)]
+pub struct PyDisplacement {
+    pub(crate) dx: f64,
+    pub(crate) dy: f64,
+    pub(crate) dz: f64,
+    pub(crate) frame: String,
+    pub(crate) unit: String,
+}
+
+#[pymethods]
+impl PyDisplacement {
+    /// Create a displacement vector.
+    ///
+    /// Args:
+    ///     dx: X component.
+    ///     dy: Y component.
+    ///     dz: Z component.
+    ///     frame: Reference frame (e.g., "ICRS", "EclipticMeanJ2000").
+    ///     unit: Length unit ("au" or "km").
+    #[new]
+    #[pyo3(signature = (dx, dy, dz, frame="ICRS", unit="au"))]
+    fn new(dx: f64, dy: f64, dz: f64, frame: &str, unit: &str) -> PyResult<Self> {
+        validate_frame(frame)?;
+        validate_unit(unit)?;
+        Ok(Self {
+            dx,
+            dy,
+            dz,
+            frame: frame.to_string(),
+            unit: unit.to_string(),
+        })
+    }
+
+    /// X component of the displacement.
+    #[getter]
+    fn dx(&self) -> f64 {
+        self.dx
+    }
+
+    /// Y component of the displacement.
+    #[getter]
+    fn dy(&self) -> f64 {
+        self.dy
+    }
+
+    /// Z component of the displacement.
+    #[getter]
+    fn dz(&self) -> f64 {
+        self.dz
+    }
+
+    /// Reference frame name.
+    #[getter]
+    fn frame(&self) -> &str {
+        &self.frame
+    }
+
+    /// Length unit name.
+    #[getter]
+    fn unit(&self) -> &str {
+        &self.unit
+    }
+
+    /// Magnitude of the displacement vector.
+    fn magnitude(&self) -> f64 {
+        (self.dx * self.dx + self.dy * self.dy + self.dz * self.dz).sqrt()
+    }
+
+    /// Add another displacement.
+    fn __add__(&self, other: &PyDisplacement) -> PyResult<PyDisplacement> {
+        if self.frame != other.frame || self.unit != other.unit {
+            return Err(PyValueError::new_err(
+                "addition requires same frame and unit",
+            ));
+        }
+        Ok(PyDisplacement {
+            dx: self.dx + other.dx,
+            dy: self.dy + other.dy,
+            dz: self.dz + other.dz,
+            frame: self.frame.clone(),
+            unit: self.unit.clone(),
+        })
+    }
+
+    /// Subtract another displacement.
+    fn __sub__(&self, other: &PyDisplacement) -> PyResult<PyDisplacement> {
+        if self.frame != other.frame || self.unit != other.unit {
+            return Err(PyValueError::new_err(
+                "subtraction requires same frame and unit",
+            ));
+        }
+        Ok(PyDisplacement {
+            dx: self.dx - other.dx,
+            dy: self.dy - other.dy,
+            dz: self.dz - other.dz,
+            frame: self.frame.clone(),
+            unit: self.unit.clone(),
+        })
+    }
+
+    /// Negate the displacement.
+    fn __neg__(&self) -> PyDisplacement {
+        PyDisplacement {
+            dx: -self.dx,
+            dy: -self.dy,
+            dz: -self.dz,
+            frame: self.frame.clone(),
+            unit: self.unit.clone(),
+        }
+    }
+
+    /// Scale the displacement by a scalar.
+    fn __mul__(&self, scalar: f64) -> PyDisplacement {
+        PyDisplacement {
+            dx: self.dx * scalar,
+            dy: self.dy * scalar,
+            dz: self.dz * scalar,
+            frame: self.frame.clone(),
+            unit: self.unit.clone(),
+        }
+    }
+
+    /// Scale the displacement by a scalar (right multiply).
+    fn __rmul__(&self, scalar: f64) -> PyDisplacement {
+        self.__mul__(scalar)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Displacement(dx={:.6}, dy={:.6}, dz={:.6}, frame='{}', unit='{}')",
+            self.dx, self.dy, self.dz, self.frame, self.unit
+        )
+    }
+
+    fn __str__(&self) -> String {
+        format!(
+            "({:+.6}, {:+.6}, {:+.6}) {} [{}]",
+            self.dx, self.dy, self.dz, self.frame, self.unit
+        )
+    }
+
+    fn __eq__(&self, other: &PyDisplacement) -> bool {
+        (self.dx - other.dx).abs() < 1e-12
+            && (self.dy - other.dy).abs() < 1e-12
+            && (self.dz - other.dz).abs() < 1e-12
+            && self.frame == other.frame
+            && self.unit == other.unit
+    }
+
+    /// Convert to a dictionary.
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let d = pyo3::types::PyDict::new(py);
+        d.set_item("dx", self.dx)?;
+        d.set_item("dy", self.dy)?;
+        d.set_item("dz", self.dz)?;
+        d.set_item("frame", &self.frame)?;
+        d.set_item("unit", &self.unit)?;
+        Ok(d)
+    }
+
+    /// Create from a dictionary.
+    #[staticmethod]
+    fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
+        let get_f64 = |k: &str| -> PyResult<f64> {
+            d.get_item(k)?
+                .ok_or_else(|| PyValueError::new_err(format!("missing key '{}'", k)))?
+                .extract()
+        };
+        let get_str = |k: &str| -> PyResult<String> {
+            d.get_item(k)?
+                .ok_or_else(|| PyValueError::new_err(format!("missing key '{}'", k)))?
+                .extract()
+        };
+        let frame = get_str("frame")?;
+        let unit = get_str("unit")?;
+        validate_frame(&frame)?;
+        validate_unit(&unit)?;
+        Ok(Self {
+            dx: get_f64("dx")?,
+            dy: get_f64("dy")?,
+            dz: get_f64("dz")?,
+            frame,
+            unit,
+        })
+    }
+
+    fn __reduce__(&self, py: Python<'_>) -> PyResult<(Py<PyAny>, DisplacementReduceArgs)> {
+        let cls = py.get_type::<Self>().into_any().unbind();
+        Ok((
+            cls,
+            (
+                self.dx,
+                self.dy,
+                self.dz,
+                self.frame.clone(),
+                self.unit.clone(),
+            ),
+        ))
+    }
+}
+
+// =============================================================================
+// PositionOrDisplacement — for polymorphic arithmetic
+// =============================================================================
+
+/// Helper enum for Position arithmetic that can return either Position or Displacement.
+#[derive(Clone, FromPyObject)]
+pub enum PositionOrDisplacement {
+    Position(PyPosition),
+    Displacement(PyDisplacement),
+}
+
+impl<'py> IntoPyObject<'py> for PositionOrDisplacement {
+    type Target = PyAny;
+    type Output = Bound<'py, Self::Target>;
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        match self {
+            PositionOrDisplacement::Position(p) => Ok(Py::new(py, p)?.into_bound(py).into_any()),
+            PositionOrDisplacement::Displacement(d) => Ok(Py::new(py, d)?.into_bound(py).into_any()),
+        }
     }
 }
 
