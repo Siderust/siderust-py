@@ -2,26 +2,26 @@
 
 import siderust
 from siderust import (
-    Observer,
     Body,
-    Star,
-    Direction,
+    CrossingDirection,
     CrossingEvent,
     CulminationEvent,
-    CrossingDirection,
     CulminationKind,
+    Direction,
     MoonPhaseGeometry,
     MoonPhaseLabel,
+    Observer,
     PhaseEvent,
     PhaseKind,
-    altitude_at,
+    Star,
     above_threshold,
+    altitude_at,
+    azimuth_at,
     below_threshold,
     crossings,
     culminations,
-    azimuth_at,
-    moon_phase,
     find_moon_phases,
+    moon_phase,
 )
 
 
@@ -34,14 +34,26 @@ class TestModuleExports:
 
     def test_all_exports(self):
         expected = {
-            "Observer", "Body", "Star", "Direction",
-            "CrossingEvent", "CulminationEvent",
-            "CrossingDirection", "CulminationKind",
-            "MoonPhaseGeometry", "MoonPhaseLabel",
-            "PhaseEvent", "PhaseKind",
-            "altitude_at", "above_threshold", "below_threshold",
-            "crossings", "culminations", "azimuth_at",
-            "moon_phase", "find_moon_phases",
+            "Observer",
+            "Body",
+            "Star",
+            "Direction",
+            "CrossingEvent",
+            "CulminationEvent",
+            "CrossingDirection",
+            "CulminationKind",
+            "MoonPhaseGeometry",
+            "MoonPhaseLabel",
+            "PhaseEvent",
+            "PhaseKind",
+            "altitude_at",
+            "above_threshold",
+            "below_threshold",
+            "crossings",
+            "culminations",
+            "azimuth_at",
+            "moon_phase",
+            "find_moon_phases",
             "__version__",
         }
         for name in expected:
@@ -99,8 +111,15 @@ class TestBody:
 
     def test_all_bodies_exist(self):
         bodies = [
-            Body.Sun, Body.Moon, Body.Mercury, Body.Venus,
-            Body.Mars, Body.Jupiter, Body.Saturn, Body.Uranus, Body.Neptune,
+            Body.Sun,
+            Body.Moon,
+            Body.Mercury,
+            Body.Venus,
+            Body.Mars,
+            Body.Jupiter,
+            Body.Saturn,
+            Body.Uranus,
+            Body.Neptune,
         ]
         assert len(bodies) == 9
 
@@ -146,6 +165,7 @@ class TestStar:
 
     def test_catalog_unknown(self):
         import pytest
+
         with pytest.raises(ValueError, match="Unknown star"):
             Star.catalog("Nonexistent")
 
@@ -210,6 +230,7 @@ class TestDirection:
 
     def test_pickle(self):
         import pickle
+
         d = Direction(ra_deg=100.0, dec_deg=-30.0)
         d2 = pickle.loads(pickle.dumps(d))
         assert abs(d.ra_deg - d2.ra_deg) < 1e-10
@@ -244,6 +265,7 @@ class TestAltitudeQueries:
 
     def test_invalid_target_type(self):
         import pytest
+
         obs = Observer.roque_de_los_muchachos()
         with pytest.raises(TypeError, match="target must be"):
             altitude_at("not a target", obs, 60000.0)
@@ -266,6 +288,7 @@ class TestThresholdQueries:
 
     def test_invalid_window(self):
         import pytest
+
         obs = Observer.roque_de_los_muchachos()
         with pytest.raises(ValueError, match="Invalid time window"):
             above_threshold(Body.Sun, obs, 60001.0, 60000.0, 0.0)

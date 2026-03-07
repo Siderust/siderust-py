@@ -20,7 +20,15 @@ use crate::observer::PyObserver;
 /// >>> Body.Sun
 /// >>> Body.Moon
 /// >>> Body.Mars
-#[pyclass(name = "Body", module = "siderust", eq, eq_int, hash, frozen, from_py_object)]
+#[pyclass(
+    name = "Body",
+    module = "siderust",
+    eq,
+    eq_int,
+    hash,
+    frozen,
+    from_py_object
+)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PyBody {
     /// The Sun.
@@ -51,45 +59,42 @@ impl PyBody {
         mjd: ModifiedJulianDate,
     ) -> f64 {
         match self {
-            PyBody::Sun => solar_system::Sun.altitude_at(observer, mjd).to::<Degree>().value(),
-            PyBody::Moon => solar_system::Moon.altitude_at(observer, mjd).to::<Degree>().value(),
-            PyBody::Mercury => {
-                solar_system::Mercury
-                    .altitude_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Venus => {
-                solar_system::Venus
-                    .altitude_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Mars => solar_system::Mars.altitude_at(observer, mjd).to::<Degree>().value(),
-            PyBody::Jupiter => {
-                solar_system::Jupiter
-                    .altitude_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Saturn => {
-                solar_system::Saturn
-                    .altitude_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Uranus => {
-                solar_system::Uranus
-                    .altitude_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Neptune => {
-                solar_system::Neptune
-                    .altitude_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
+            PyBody::Sun => solar_system::Sun
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Moon => solar_system::Moon
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Mercury => solar_system::Mercury
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Venus => solar_system::Venus
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Mars => solar_system::Mars
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Jupiter => solar_system::Jupiter
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Saturn => solar_system::Saturn
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Uranus => solar_system::Uranus
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Neptune => solar_system::Neptune
+                .altitude_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
         }
     }
 
@@ -100,45 +105,42 @@ impl PyBody {
         mjd: ModifiedJulianDate,
     ) -> f64 {
         match self {
-            PyBody::Sun => solar_system::Sun.azimuth_at(observer, mjd).to::<Degree>().value(),
-            PyBody::Moon => solar_system::Moon.azimuth_at(observer, mjd).to::<Degree>().value(),
-            PyBody::Mercury => {
-                solar_system::Mercury
-                    .azimuth_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Venus => {
-                solar_system::Venus
-                    .azimuth_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Mars => solar_system::Mars.azimuth_at(observer, mjd).to::<Degree>().value(),
-            PyBody::Jupiter => {
-                solar_system::Jupiter
-                    .azimuth_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Saturn => {
-                solar_system::Saturn
-                    .azimuth_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Uranus => {
-                solar_system::Uranus
-                    .azimuth_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
-            PyBody::Neptune => {
-                solar_system::Neptune
-                    .azimuth_at(observer, mjd)
-                    .to::<Degree>()
-                    .value()
-            }
+            PyBody::Sun => solar_system::Sun
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Moon => solar_system::Moon
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Mercury => solar_system::Mercury
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Venus => solar_system::Venus
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Mars => solar_system::Mars
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Jupiter => solar_system::Jupiter
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Saturn => solar_system::Saturn
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Uranus => solar_system::Uranus
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
+            PyBody::Neptune => solar_system::Neptune
+                .azimuth_at(observer, mjd)
+                .to::<Degree>()
+                .value(),
         }
     }
 }

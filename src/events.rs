@@ -5,7 +5,15 @@ use qtty::*;
 use siderust::{CrossingDirection, CrossingEvent, CulminationEvent, CulminationKind};
 
 /// Direction of a threshold crossing.
-#[pyclass(name = "CrossingDirection", module = "siderust", eq, eq_int, hash, frozen, from_py_object)]
+#[pyclass(
+    name = "CrossingDirection",
+    module = "siderust",
+    eq,
+    eq_int,
+    hash,
+    frozen,
+    from_py_object
+)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PyCrossingDirection {
     /// Body is rising through the threshold.
@@ -83,7 +91,15 @@ impl PyCrossingEvent {
 }
 
 /// Kind of culmination event.
-#[pyclass(name = "CulminationKind", module = "siderust", eq, eq_int, hash, frozen, from_py_object)]
+#[pyclass(
+    name = "CulminationKind",
+    module = "siderust",
+    eq,
+    eq_int,
+    hash,
+    frozen,
+    from_py_object
+)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PyCulminationKind {
     /// Upper culmination (maximum altitude).

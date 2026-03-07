@@ -13,7 +13,15 @@ use crate::errors::invalid_period_error;
 use crate::observer::PyObserver;
 
 /// Moon phase label (8 principal phases).
-#[pyclass(name = "MoonPhaseLabel", module = "siderust", eq, eq_int, hash, frozen, from_py_object)]
+#[pyclass(
+    name = "MoonPhaseLabel",
+    module = "siderust",
+    eq,
+    eq_int,
+    hash,
+    frozen,
+    from_py_object
+)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PyMoonPhaseLabel {
     NewMoon = 0,
@@ -140,7 +148,15 @@ impl PyMoonPhaseGeometry {
 }
 
 /// Kind of principal phase event.
-#[pyclass(name = "PhaseKind", module = "siderust", eq, eq_int, hash, frozen, from_py_object)]
+#[pyclass(
+    name = "PhaseKind",
+    module = "siderust",
+    eq,
+    eq_int,
+    hash,
+    frozen,
+    from_py_object
+)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PyPhaseKind {
     NewMoon = 0,

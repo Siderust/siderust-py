@@ -9,27 +9,23 @@ Run:
     python examples/all_features.py
 """
 
+import pickle
+
 from siderust import (
-    Observer,
     Body,
-    Star,
-    Direction,
-    CrossingEvent,
-    CulminationEvent,
     CrossingDirection,
     CulminationKind,
-    MoonPhaseGeometry,
-    MoonPhaseLabel,
-    PhaseEvent,
-    PhaseKind,
-    altitude_at,
+    Direction,
+    Observer,
+    Star,
     above_threshold,
+    altitude_at,
+    azimuth_at,
     below_threshold,
     crossings,
     culminations,
-    azimuth_at,
-    moon_phase,
     find_moon_phases,
+    moon_phase,
 )
 
 
@@ -75,8 +71,15 @@ def main():
     # ══════════════════════════════════════════════════════════════
 
     all_bodies = [
-        Body.Sun, Body.Moon, Body.Mercury, Body.Venus,
-        Body.Mars, Body.Jupiter, Body.Saturn, Body.Uranus, Body.Neptune,
+        Body.Sun,
+        Body.Moon,
+        Body.Mercury,
+        Body.Venus,
+        Body.Mars,
+        Body.Jupiter,
+        Body.Saturn,
+        Body.Uranus,
+        Body.Neptune,
     ]
     print(f"Available bodies ({len(all_bodies)}):")
     for b in all_bodies:
@@ -93,8 +96,16 @@ def main():
     # ══════════════════════════════════════════════════════════════
 
     catalog_names = [
-        "Sirius", "Vega", "Polaris", "Canopus", "Arcturus",
-        "Rigel", "Betelgeuse", "Procyon", "Aldebaran", "Altair",
+        "Sirius",
+        "Vega",
+        "Polaris",
+        "Canopus",
+        "Arcturus",
+        "Rigel",
+        "Betelgeuse",
+        "Procyon",
+        "Aldebaran",
+        "Altair",
     ]
     for name in catalog_names:
         s = Star.catalog(name)
@@ -107,7 +118,7 @@ def main():
     # Error handling
     try:
         Star.catalog("Nonexistent")
-        assert False, "Should have raised"
+        raise AssertionError("Expected Star.catalog to reject an unknown star")
     except ValueError as e:
         print(f"  Expected error: {e}")
 
@@ -121,7 +132,6 @@ def main():
     print(f"South Celestial Pole: {scp}")
 
     # Pickle
-    import pickle
     d = Direction(ra_deg=123.456, dec_deg=-45.678)
     d2 = pickle.loads(pickle.dumps(d))
     assert abs(d.ra_deg - d2.ra_deg) < 1e-10
@@ -161,10 +171,10 @@ def main():
     night_periods = below_threshold(Body.Sun, obs, start, end, 0.0)
     print(f"Sun above horizon: {len(day_periods)} period(s)")
     for s, e in day_periods:
-        print(f"  MJD {s:.6f} – {e:.6f}  ({(e-s)*24:.1f}h)")
+        print(f"  MJD {s:.6f} – {e:.6f}  ({(e - s) * 24:.1f}h)")
     print(f"Sun below horizon: {len(night_periods)} period(s)")
     for s, e in night_periods:
-        print(f"  MJD {s:.6f} – {e:.6f}  ({(e-s)*24:.1f}h)")
+        print(f"  MJD {s:.6f} – {e:.6f}  ({(e - s) * 24:.1f}h)")
 
     # ══════════════════════════════════════════════════════════════
     section("7. Crossings (Sunrise/Sunset)")
@@ -198,7 +208,7 @@ def main():
     phase = moon_phase(2451545.0)  # J2000.0
     print(f"J2000.0 geocentric: {phase}")
     print(f"  Phase angle: {phase.phase_angle_deg:.1f}°")
-    print(f"  Illumination: {phase.illuminated_fraction*100:.1f}%")
+    print(f"  Illumination: {phase.illuminated_fraction * 100:.1f}%")
     print(f"  Waxing: {phase.waxing}")
 
     # Topocentric
@@ -215,10 +225,12 @@ def main():
     section("10. Multi-Observatory Workflow")
     # ══════════════════════════════════════════════════════════════
 
-    print(f"Sun altitude at different sites (MJD 60000.5):")
+    print("Sun altitude at different sites (MJD 60000.5):")
     for name, site in [
-        ("Roque", roque), ("Paranal", paranal),
-        ("Mauna Kea", mk), ("La Silla", ls),
+        ("Roque", roque),
+        ("Paranal", paranal),
+        ("Mauna Kea", mk),
+        ("La Silla", ls),
     ]:
         alt = altitude_at(Body.Sun, site, 60000.5)
         print(f"  {name:12s}: {alt:+7.2f}°")

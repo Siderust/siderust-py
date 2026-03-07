@@ -26,11 +26,9 @@ enum Subject<'a> {
     Dir(&'a PyDirection),
 }
 
-/// A Python-friendly "subject" that can be a Body, Star, or Direction. 
+/// A Python-friendly "subject" that can be a Body, Star, or Direction.
 /// We accept `&Bound<'_, PyAny>` and try to extract each type.
-fn extract_subject<'a>(
-    target: &'a Bound<'_, PyAny>,
-) -> PyResult<Subject<'a>> {
+fn extract_subject<'a>(target: &'a Bound<'_, PyAny>) -> PyResult<Subject<'a>> {
     // Try Body enum first
     if let Ok(body) = target.extract::<PyBody>() {
         return Ok(Subject::Body(body));
@@ -42,7 +40,9 @@ fn extract_subject<'a>(
     }
     // Try Direction
     if let Ok(dir) = target.extract::<PyRef<'_, PyDirection>>() {
-        return Ok(Subject::Dir(unsafe { &*(dir.as_ptr() as *const PyDirection) }));
+        return Ok(Subject::Dir(unsafe {
+            &*(dir.as_ptr() as *const PyDirection)
+        }));
     }
     Err(pyo3::exceptions::PyTypeError::new_err(
         "target must be a Body, Star, or Direction",
