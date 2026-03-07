@@ -12,7 +12,7 @@ name = "siderust"  # Python import name
 crate-type = ["cdylib"]
 
 [dependencies]
-siderust = { path = "siderust", features = [] }
+siderust = { path = "../../rust/siderust", features = [] }
 qtty     = "0.4.0"
 tempoch  = "0.3"
 affn     = { version = "0.3.3", features = ["astro"] }
@@ -24,6 +24,6 @@ pyo3    = { version = "0.28.2", features = ["auto-initialize"] }
 approx  = "0.5"
 
 [patch.crates-io]
-affn    = { path = "siderust/dev-deps/affn" }
-cheby   = { path = "siderust/dev-deps/cheby" }
-tempoch = { path = "siderust/dev-deps/tempoch/tempoch" }
+affn    = { path = "../../rust/affn" }
+cheby   = { path = "../../rust/siderust/dev-deps/cheby" }
+tempoch = { path = "../../rust/tempoch/tempoch" }
