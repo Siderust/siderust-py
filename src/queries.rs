@@ -4,9 +4,9 @@
 //! ICRS direction and delegate to the appropriate Rust implementation.
 
 use pyo3::prelude::*;
-use qtty::*;
-use siderust::{AltitudePeriodsProvider, SearchOpts};
-use tempoch::{Interval, ModifiedJulianDate, MJD};
+use siderust::qtty::*;
+use siderust::time::{Interval, ModifiedJulianDate};
+use siderust::{AltitudeProvider, SearchOpts};
 
 use crate::bodies::{dispatch_body, PyBody};
 use crate::coordinates::PyDirection;
@@ -49,7 +49,7 @@ fn extract_subject<'a>(target: &'a Bound<'_, PyAny>) -> PyResult<Subject<'a>> {
     ))
 }
 
-fn make_window(start_mjd: f64, end_mjd: f64) -> PyResult<tempoch::Period<MJD>> {
+fn make_window(start_mjd: f64, end_mjd: f64) -> PyResult<Interval<ModifiedJulianDate>> {
     if start_mjd >= end_mjd {
         return Err(invalid_period_error());
     }

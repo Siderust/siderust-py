@@ -24,7 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -36,9 +35,11 @@ jobs:
       - name: Install formatter
         run: python -m pip install --upgrade pip ruff
       - name: Check Rust formatting
-        run: cargo fmt --check
+        run: |
+          cargo fmt --all -- --check
+          cargo fmt --manifest-path tests/interop_consumer/Cargo.toml -- --check
       - name: Check Python formatting
-        run: python -m ruff format --check python tests examples
+        run: python -m ruff format --check python tests examples scripts
 
   lint:
     name: Lint
@@ -46,7 +47,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -59,9 +59,11 @@ jobs:
       - name: Install linters
         run: python -m pip install --upgrade pip ruff
       - name: Run clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --manifest-path tests/interop_consumer/Cargo.toml --all-targets -- -D warnings
       - name: Run ruff
-        run: python -m ruff check python tests examples
+        run: python -m ruff check python tests examples scripts
 
   rust-test:
     name: Rust Test
@@ -69,12 +71,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run Rust tests
         run: cargo test --all-targets
+
+  bridge-contract:
+    name: Bridge Contract (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Build extensions and run bridge contract
+        run: python scripts/test_interop_contract.py
 
   python-test:
     name: Python Test (3.${{ matrix.python-minor }})
@@ -86,7 +107,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -98,8 +118,9 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest
+          python -m pip install pytest maturin
           python -m pip install .
+          python -m pip install ./tests/interop_consumer
       - name: Run Python tests
         run: |
           tmpdir="$(mktemp -d)"
@@ -113,7 +134,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
@@ -124,8 +144,9 @@ jobs:
       - name: Install coverage dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-cov
+          python -m pip install pytest pytest-cov maturin
           python -m pip install .
+          python -m pip install ./tests/interop_consumer
       - name: Run coverage
         run: |
           rm -f coverage.xml

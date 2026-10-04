@@ -4,10 +4,10 @@
 //! moon phase queries, phase events, and illumination thresholds.
 
 use pyo3::prelude::*;
-use qtty::*;
-use siderust::calculus::ephemeris::Vsop87Ephemeris;
-use siderust::calculus::lunar::phase as lunar;
-use tempoch::{Interval, JulianDate, ModifiedJulianDate};
+use siderust::ephemeris::Vsop87Ephemeris;
+use siderust::event::lunar::phase as lunar;
+use siderust::qtty::*;
+use siderust::time::{Interval, JulianDate, ModifiedJulianDate};
 
 use crate::errors::invalid_period_error;
 use crate::observer::PyObserver;
@@ -89,7 +89,7 @@ impl From<lunar::MoonPhaseGeometry> for PyMoonPhaseGeometry {
     fn from(g: lunar::MoonPhaseGeometry) -> Self {
         Self {
             phase_angle_deg: g.phase_angle.to::<Degree>().value(),
-            illuminated_fraction: g.illuminated_fraction,
+            illuminated_fraction: g.illuminated_fraction.value(),
             elongation_deg: g.elongation.to::<Degree>().value(),
             waxing: g.waxing,
             label: g.label().into(),

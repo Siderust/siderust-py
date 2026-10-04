@@ -6,10 +6,10 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use qtty::*;
-use siderust::astro::orbit::Orbit;
 use siderust::bodies::comet;
-use tempoch::JulianDate;
+use siderust::qtty::*;
+use siderust::time::JulianDate;
+use siderust::KeplerianOrbit as Orbit;
 
 use crate::position::{PyPosition, CENTER_HELIO, FRAME_ECL, UNIT_AU};
 
@@ -80,31 +80,34 @@ impl PyOrbit {
     /// Semi-major axis in AU.
     #[getter]
     fn semi_major_axis_au(&self) -> f64 {
-        self.inner.semi_major_axis.value()
+        self.inner.shape().semi_major_axis().value()
     }
 
     /// Orbital eccentricity.
     #[getter]
     fn eccentricity(&self) -> f64 {
-        self.inner.eccentricity
+        self.inner.shape().eccentricity()
     }
 
     /// Inclination in degrees.
     #[getter]
     fn inclination_deg(&self) -> f64 {
-        self.inner.inclination.value()
+        self.inner.orientation().inclination().value()
     }
 
     /// Longitude of ascending node (Ω) in degrees.
     #[getter]
     fn lon_ascending_node_deg(&self) -> f64 {
-        self.inner.longitude_of_ascending_node.value()
+        self.inner
+            .orientation()
+            .longitude_of_ascending_node()
+            .value()
     }
 
     /// Argument of perihelion (ω) in degrees.
     #[getter]
     fn arg_perihelion_deg(&self) -> f64 {
-        self.inner.argument_of_perihelion.value()
+        self.inner.orientation().argument_of_periapsis().value()
     }
 
     /// Mean anomaly at epoch (M₀) in degrees.
@@ -144,7 +147,7 @@ impl PyOrbit {
 
     /// Approximate orbital period in Julian years (Kepler's third law).
     fn period_years(&self) -> f64 {
-        self.inner.semi_major_axis.value().powf(1.5)
+        self.inner.shape().semi_major_axis().value().powf(1.5)
     }
 
     // ── Serialization ───────────────────────────────────────────────
@@ -184,11 +187,14 @@ impl PyOrbit {
     fn __repr__(&self) -> String {
         format!(
             "Orbit(a={:.6} AU, e={:.6}, i={:.4}°, Ω={:.4}°, ω={:.4}°, M₀={:.4}°, epoch=JD {:.1})",
-            self.inner.semi_major_axis.value(),
-            self.inner.eccentricity,
-            self.inner.inclination.value(),
-            self.inner.longitude_of_ascending_node.value(),
-            self.inner.argument_of_perihelion.value(),
+            self.inner.shape().semi_major_axis().value(),
+            self.inner.shape().eccentricity(),
+            self.inner.orientation().inclination().value(),
+            self.inner
+                .orientation()
+                .longitude_of_ascending_node()
+                .value(),
+            self.inner.orientation().argument_of_periapsis().value(),
             self.inner.mean_anomaly_at_epoch.value(),
             self.inner.epoch.value(),
         )
@@ -322,7 +328,7 @@ impl PyComet {
 
     /// Approximate orbital period in Julian years.
     fn period_years(&self) -> f64 {
-        self.orbit.semi_major_axis.value().powf(1.5)
+        self.orbit.shape().semi_major_axis().value().powf(1.5)
     }
 
     /// Heliocentric ecliptic position at a given Julian Date.
@@ -353,8 +359,8 @@ impl PyComet {
         format!(
             "{} (a={:.3} AU, e={:.6}, P={:.1} yr)",
             self.name,
-            self.orbit.semi_major_axis.value(),
-            self.orbit.eccentricity,
+            self.orbit.shape().semi_major_axis().value(),
+            self.orbit.shape().eccentricity(),
             self.period_years(),
         )
     }

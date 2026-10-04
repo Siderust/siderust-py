@@ -4,13 +4,13 @@
 //! custom construction.
 
 use pyo3::prelude::*;
-use qtty::*;
 use siderust::bodies::catalog;
 use siderust::bodies::Star;
 use siderust::coordinates::spherical::direction;
-use siderust::AltitudePeriodsProvider;
+use siderust::qtty::*;
+use siderust::time::ModifiedJulianDate;
+use siderust::AltitudeProvider;
 use siderust::AzimuthProvider;
-use tempoch::ModifiedJulianDate;
 
 use crate::errors::unknown_star_error;
 use crate::observer::PyObserver;
@@ -81,22 +81,20 @@ impl PyStar {
         use siderust::coordinates::centers::Geocentric;
         use siderust::coordinates::frames::EquatorialMeanJ2000;
         use siderust::targets::CoordinateWithPM;
-        use tempoch::JulianDate;
-
         let pos = affn::spherical::Position::<Geocentric, EquatorialMeanJ2000, LightYear>::new(
             Degrees::new(ra_deg),
             Degrees::new(dec_deg),
             LightYears::new(1.0), // Placeholder distance
         );
 
-        let coord = CoordinateWithPM::new_static(pos, JulianDate::J2000);
+        let coord = CoordinateWithPM::new_static(pos, siderust::J2000);
 
         Self {
             inner: Star::new(
                 name.to_string(),
                 LightYears::new(1.0),
                 SolarMasses::new(1.0),
-                qtty::length::nominal::SolarRadiuses::new(1.0),
+                siderust::qtty::length::nominal::SolarRadiuses::new(1.0),
                 SolarLuminosities::new(1.0),
                 coord,
             ),

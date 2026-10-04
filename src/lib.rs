@@ -11,6 +11,7 @@ mod coordinates;
 mod ephemeris;
 mod errors;
 mod events;
+pub mod interop;
 mod observer;
 mod orbit;
 mod phase;
@@ -82,6 +83,19 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(phase::moon_phase, m)?)?;
     m.add_function(wrap_pyfunction!(phase::find_moon_phases, m)?)?;
     m.add_function(wrap_pyfunction!(target::apply_proper_motion, m)?)?;
+
+    // Private canonical-extension hooks used by the public Rust interop API.
+    m.add_function(wrap_pyfunction!(observer::_bridge_observer_to_parts, m)?)?;
+    m.add_function(wrap_pyfunction!(observer::_bridge_observer_from_parts, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        coordinates::_bridge_direction_to_parts,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        coordinates::_bridge_direction_from_parts,
+        m
+    )?)?;
+    m.add("_bridge_protocol_version", interop::BRIDGE_PROTOCOL_VERSION)?;
 
     // Twilight constants
     m.add("TWILIGHT_HORIZON", queries::TWILIGHT_HORIZON)?;

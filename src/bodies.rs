@@ -5,13 +5,13 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use qtty::*;
 use siderust::bodies::solar_system;
 use siderust::coordinates::centers::Geodetic;
 use siderust::coordinates::frames::ECEF;
-use siderust::AltitudePeriodsProvider;
+use siderust::qtty::*;
+use siderust::time::{JulianDate, ModifiedJulianDate};
+use siderust::AltitudeProvider;
 use siderust::AzimuthProvider;
-use tempoch::{JulianDate, ModifiedJulianDate};
 
 use crate::observer::PyObserver;
 use crate::position::{

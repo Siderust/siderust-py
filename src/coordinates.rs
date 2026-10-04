@@ -4,11 +4,11 @@
 //! fixed-coordinate altitude/azimuth queries.
 
 use pyo3::prelude::*;
-use qtty::*;
 use siderust::coordinates::spherical::direction;
-use siderust::AltitudePeriodsProvider;
+use siderust::qtty::*;
+use siderust::time::ModifiedJulianDate;
+use siderust::AltitudeProvider;
 use siderust::AzimuthProvider;
-use tempoch::ModifiedJulianDate;
 
 use crate::observer::PyObserver;
 
@@ -28,6 +28,20 @@ impl PyDirection {
     pub fn from_inner(inner: direction::ICRS) -> Self {
         Self { inner }
     }
+}
+
+#[pyfunction]
+pub(crate) fn _bridge_direction_to_parts(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64)> {
+    let direction = value.cast::<PyDirection>()?.borrow();
+    Ok((direction.ra_deg(), direction.dec_deg()))
+}
+
+#[pyfunction]
+pub(crate) fn _bridge_direction_from_parts(
+    right_ascension_degrees: f64,
+    declination_degrees: f64,
+) -> PyDirection {
+    PyDirection::new(right_ascension_degrees, declination_degrees)
 }
 
 #[allow(clippy::wrong_self_convention)]

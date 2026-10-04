@@ -4,26 +4,18 @@ version = "0.1.0"
 edition = "2021"
 description = "Python bindings for siderust astrometry and astrodynamics"
 license = "AGPL-3.0"
-repository = "https://github.com/Siderust/siderust"
+repository = "https://github.com/Siderust/siderust-py"
 authors = ["VPRamon <vallespuigramon@gmail.com>"]
 
 [lib]
-name = "siderust"  # Python import name
-crate-type = ["cdylib"]
+name = "siderust_py"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-siderust = { path = "siderust", features = [] }
-qtty     = "0.4.0"
-tempoch  = "0.3"
-affn     = { version = "0.3.3", features = ["astro"] }
-chrono   = "0.4.44"
-pyo3     = { version = "0.28.2", features = ["extension-module"] }
+siderust = { version = "0.12", features = [] }
+affn     = { version = "0.10", features = ["astro"] }
+pyo3     = { version = "0.29" }
 
 [dev-dependencies]
-pyo3    = { version = "0.28.2", features = ["auto-initialize"] }
+pyo3    = { version = "0.29", features = ["auto-initialize"] }
 approx  = "0.5"
-
-[patch.crates-io]
-affn    = { path = "siderust/dev-deps/affn" }
-cheby   = { path = "siderust/dev-deps/cheby" }
-tempoch = { path = "siderust/dev-deps/tempoch/tempoch" }

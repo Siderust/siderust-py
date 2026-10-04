@@ -5,8 +5,8 @@
 
 use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
-use siderust::calculus::ephemeris::{DynEphemeris, RuntimeEphemeris};
-use tempoch::JulianDate;
+use siderust::ephemeris::{DynEphemeris, RuntimeEphemeris};
+use siderust::time::JulianDate;
 
 use crate::position::{
     PyPosition, CENTER_BARY, CENTER_GEO, CENTER_HELIO, FRAME_ECL, UNIT_AU, UNIT_KM,

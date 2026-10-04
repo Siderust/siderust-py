@@ -4,9 +4,9 @@
 //! major observatory sites.
 
 use pyo3::prelude::*;
-use qtty::{Degrees, Meters};
 use siderust::coordinates::centers::Geodetic;
 use siderust::coordinates::frames::ECEF;
+use siderust::qtty::{Degrees, Meters};
 
 /// An observer location on the Earth's surface (WGS84 geodetic).
 ///
@@ -25,6 +25,25 @@ impl PyObserver {
     pub fn from_inner(inner: Geodetic<ECEF>) -> Self {
         Self { inner }
     }
+}
+
+#[pyfunction]
+pub(crate) fn _bridge_observer_to_parts(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64, f64)> {
+    let observer = value.cast::<PyObserver>()?.borrow();
+    Ok((
+        observer.inner.lon.value(),
+        observer.inner.lat.value(),
+        observer.inner.height.value(),
+    ))
+}
+
+#[pyfunction]
+pub(crate) fn _bridge_observer_from_parts(
+    longitude_degrees: f64,
+    latitude_degrees: f64,
+    height_metres: f64,
+) -> PyObserver {
+    PyObserver::new(longitude_degrees, latitude_degrees, height_metres)
 }
 
 #[pymethods]
@@ -53,7 +72,7 @@ impl PyObserver {
     #[staticmethod]
     fn roque_de_los_muchachos() -> Self {
         Self {
-            inner: siderust::observatories::ROQUE_DE_LOS_MUCHACHOS,
+            inner: siderust::catalogs::observatories::ROQUE_DE_LOS_MUCHACHOS.geodetic,
         }
     }
 
@@ -61,7 +80,7 @@ impl PyObserver {
     #[staticmethod]
     fn el_paranal() -> Self {
         Self {
-            inner: siderust::observatories::EL_PARANAL,
+            inner: siderust::catalogs::observatories::EL_PARANAL.geodetic,
         }
     }
 
@@ -69,7 +88,7 @@ impl PyObserver {
     #[staticmethod]
     fn mauna_kea() -> Self {
         Self {
-            inner: siderust::observatories::MAUNA_KEA,
+            inner: siderust::catalogs::observatories::MAUNA_KEA.geodetic,
         }
     }
 
@@ -77,7 +96,7 @@ impl PyObserver {
     #[staticmethod]
     fn la_silla() -> Self {
         Self {
-            inner: siderust::observatories::LA_SILLA_OBSERVATORY,
+            inner: siderust::catalogs::observatories::LA_SILLA_OBSERVATORY.geodetic,
         }
     }
 
