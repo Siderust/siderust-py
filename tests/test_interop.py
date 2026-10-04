@@ -66,3 +66,25 @@ def test_direction_cross_extension_round_trip():
 def test_bridge_rejects_noncanonical_types(function, wrong_value):
     with pytest.raises(TypeError):
         function(wrong_value)
+
+
+@pytest.mark.parametrize("field", ["lon_deg", "lat_deg", "height_m"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_bridge_rejects_non_finite_observer_parts(field, value):
+    parts = {"lon_deg": 0.0, "lat_deg": 0.0, "height_m": 0.0}
+    parts[field] = value
+
+    with pytest.raises(ValueError, match=rf"{field} must be finite"):
+        consumer.observer_from_parts(
+            parts["lon_deg"], parts["lat_deg"], parts["height_m"]
+        )
+
+
+@pytest.mark.parametrize("field", ["ra_deg", "dec_deg"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_bridge_rejects_non_finite_direction_parts(field, value):
+    parts = {"ra_deg": 0.0, "dec_deg": 0.0}
+    parts[field] = value
+
+    with pytest.raises(ValueError, match=rf"{field} must be finite"):
+        consumer.direction_from_parts(parts["ra_deg"], parts["dec_deg"])
