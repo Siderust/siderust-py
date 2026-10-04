@@ -3,6 +3,7 @@
 //! Wraps `Geodetic<ECEF>` as a Python class with named constructors for
 //! major observatory sites.
 
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use siderust::coordinates::centers::Geodetic;
 use siderust::coordinates::frames::ECEF;
@@ -42,7 +43,7 @@ pub(crate) fn _bridge_observer_from_parts(
     longitude_degrees: f64,
     latitude_degrees: f64,
     height_metres: f64,
-) -> PyObserver {
+) -> PyResult<PyObserver> {
     PyObserver::new(longitude_degrees, latitude_degrees, height_metres)
 }
 
@@ -56,14 +57,24 @@ impl PyObserver {
     ///     height_m: Height above ellipsoid in metres (default 0).
     #[new]
     #[pyo3(signature = (lon_deg, lat_deg, height_m = 0.0))]
-    fn new(lon_deg: f64, lat_deg: f64, height_m: f64) -> Self {
-        Self {
+    fn new(lon_deg: f64, lat_deg: f64, height_m: f64) -> PyResult<Self> {
+        for (name, value) in [
+            ("lon_deg", lon_deg),
+            ("lat_deg", lat_deg),
+            ("height_m", height_m),
+        ] {
+            if !value.is_finite() {
+                return Err(PyValueError::new_err(format!("{name} must be finite")));
+            }
+        }
+
+        Ok(Self {
             inner: Geodetic::<ECEF>::new(
                 Degrees::new(lon_deg),
                 Degrees::new(lat_deg),
                 Meters::new(height_m),
             ),
-        }
+        })
     }
 
     // ── Predefined observatories ──────────────────────────────────────
@@ -180,10 +191,6 @@ impl PyObserver {
                 })?
                 .extract()
         };
-        Ok(Self::new(
-            get("lon_deg")?,
-            get("lat_deg")?,
-            get("height_m")?,
-        ))
+        Self::new(get("lon_deg")?, get("lat_deg")?, get("height_m")?)
     }
 }

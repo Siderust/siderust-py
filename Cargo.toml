@@ -1,6 +1,6 @@
 [package]
 name = "siderust-py"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "Python bindings for siderust astrometry and astrodynamics"
 license = "AGPL-3.0"
