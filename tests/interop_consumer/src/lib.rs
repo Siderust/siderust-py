@@ -27,6 +27,22 @@ fn observer_round_trip(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Py<
 }
 
 #[pyfunction]
+fn observer_from_parts(
+    py: Python<'_>,
+    longitude_degrees: f64,
+    latitude_degrees: f64,
+    height_metres: f64,
+) -> PyResult<Py<PyAny>> {
+    let observer = ObserverParts {
+        longitude_degrees,
+        latitude_degrees,
+        height_metres,
+    }
+    .into_observer();
+    observer_to_python(py, &observer)
+}
+
+#[pyfunction]
 fn direction_parts(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64)> {
     let direction = direction_from_python(value)?;
     let parts = DirectionParts::from(&direction);
@@ -38,12 +54,28 @@ fn direction_round_trip(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Py
     direction_to_python(py, &direction_from_python(value)?)
 }
 
+#[pyfunction]
+fn direction_from_parts(
+    py: Python<'_>,
+    right_ascension_degrees: f64,
+    declination_degrees: f64,
+) -> PyResult<Py<PyAny>> {
+    let direction = DirectionParts {
+        right_ascension_degrees,
+        declination_degrees,
+    }
+    .into_direction();
+    direction_to_python(py, &direction)
+}
+
 #[pymodule]
 fn _siderust_interop_consumer(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(bridge_protocol_version, m)?)?;
     m.add_function(wrap_pyfunction!(observer_parts, m)?)?;
     m.add_function(wrap_pyfunction!(observer_round_trip, m)?)?;
+    m.add_function(wrap_pyfunction!(observer_from_parts, m)?)?;
     m.add_function(wrap_pyfunction!(direction_parts, m)?)?;
     m.add_function(wrap_pyfunction!(direction_round_trip, m)?)?;
+    m.add_function(wrap_pyfunction!(direction_from_parts, m)?)?;
     Ok(())
 }
