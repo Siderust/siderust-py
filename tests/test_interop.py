@@ -75,9 +75,7 @@ def test_bridge_rejects_non_finite_observer_parts(field, value):
     parts[field] = value
 
     with pytest.raises(ValueError, match=rf"{field} must be finite"):
-        consumer.observer_from_parts(
-            parts["lon_deg"], parts["lat_deg"], parts["height_m"]
-        )
+        consumer.observer_from_parts(parts["lon_deg"], parts["lat_deg"], parts["height_m"])
 
 
 @pytest.mark.parametrize("field", ["ra_deg", "dec_deg"])
