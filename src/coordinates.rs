@@ -3,6 +3,7 @@
 //! Wraps `spherical::direction::ICRS` as a lightweight Python class for
 //! fixed-coordinate altitude/azimuth queries.
 
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use siderust::coordinates::spherical::direction;
 use siderust::qtty::*;
@@ -40,7 +41,7 @@ pub(crate) fn _bridge_direction_to_parts(value: &Bound<'_, PyAny>) -> PyResult<(
 pub(crate) fn _bridge_direction_from_parts(
     right_ascension_degrees: f64,
     declination_degrees: f64,
-) -> PyDirection {
+) -> PyResult<PyDirection> {
     PyDirection::new(right_ascension_degrees, declination_degrees)
 }
 
@@ -53,10 +54,16 @@ impl PyDirection {
     ///     ra_deg: Right ascension in degrees.
     ///     dec_deg: Declination in degrees.
     #[new]
-    fn new(ra_deg: f64, dec_deg: f64) -> Self {
-        Self {
-            inner: direction::ICRS::new(Degrees::new(ra_deg), Degrees::new(dec_deg)),
+    fn new(ra_deg: f64, dec_deg: f64) -> PyResult<Self> {
+        for (name, value) in [("ra_deg", ra_deg), ("dec_deg", dec_deg)] {
+            if !value.is_finite() {
+                return Err(PyValueError::new_err(format!("{name} must be finite")));
+            }
         }
+
+        Ok(Self {
+            inner: direction::ICRS::new(Degrees::new(ra_deg), Degrees::new(dec_deg)),
+        })
     }
 
     /// Right ascension in degrees.
@@ -146,7 +153,7 @@ impl PyDirection {
             .get_item("dec_deg")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'dec_deg'"))?
             .extract()?;
-        Ok(Self::new(ra, dec))
+        Self::new(ra, dec)
     }
 
     fn __repr__(&self) -> String {
