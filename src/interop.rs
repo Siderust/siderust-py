@@ -4,8 +4,9 @@
 //! downstream extension must therefore not compile its own copy of
 //! `PyObserver` or `PyDirection` and expect Python type identity to match. This
 //! module imports the installed canonical extension and asks it to extract or
-//! construct its own classes. Only primitive `f64` values cross that boundary.
-//! The installed extension must expose the same [`BRIDGE_PROTOCOL_VERSION`].
+//! construct its own classes. Only primitive scalar values (`f64` payload
+//! fields and the `u32` protocol version) cross that boundary. The installed
+//! extension must expose the same [`BRIDGE_PROTOCOL_VERSION`].
 
 use pyo3::exceptions::PyImportError;
 use pyo3::prelude::*;

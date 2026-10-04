@@ -26,8 +26,8 @@ class.
 
 The interop API instead imports `siderust._siderust` and invokes narrow bridge
 functions there. The canonical extension performs its own type checks and
-constructs its own objects. Only `f64` values cross the shared-library
-boundary.
+constructs its own objects. Only primitive scalar values (`f64` payload fields
+and the `u32` protocol version) cross the shared-library boundary.
 
 - `ObserverParts` carries east-positive WGS84 geodetic longitude in degrees,
   north-positive latitude in degrees, and ellipsoidal height in metres. It

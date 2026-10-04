@@ -17,12 +17,14 @@ python -m pip install ruff pytest pytest-cov
 python -m pip install .
 python -m pip install ./tests/interop_consumer
 
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
+cargo fmt --all -- --check
+cargo fmt --manifest-path tests/interop_consumer/Cargo.toml -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo clippy --manifest-path tests/interop_consumer/Cargo.toml --all-targets -- -D warnings
 cargo test --all-targets
 
-python -m ruff format --check python tests examples
-python -m ruff check python tests examples
+python -m ruff format --check python tests examples scripts
+python -m ruff check python tests examples scripts
 
 run_pytest() {
   local tmp_dir
