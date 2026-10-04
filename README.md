@@ -274,7 +274,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 python -m ruff check python tests examples scripts
 ```
 
-The CI matrix validates Python 3.8 through 3.12 and also exercises the
+The CI matrix validates Python 3.8 through 3.14 and also exercises the
 cross-extension bridge contract on Linux, macOS, and Windows.
 
 ## Changelog
