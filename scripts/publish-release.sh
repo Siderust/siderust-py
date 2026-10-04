@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CRATE_NAME="siderust-py"
 DRY_RUN=false
 TAG=""
+PYPROJECT_FILE="${SIDERUST_PY_PYPROJECT_FILE:-pyproject.toml}"
 
 usage() {
   cat <<'EOF'
@@ -13,6 +14,7 @@ Usage: scripts/publish-release.sh [--dry-run] [--tag vX.Y.Z]
 
 Validates release metadata and the packaged crate before publishing.
 When --dry-run is supplied, all verification is performed without uploading.
+Real publication requires a version tag matching Cargo.toml.
 EOF
 }
 
@@ -50,11 +52,12 @@ cargo_version="$(
 )"
 
 python_version="$(
-  python3 - <<'PY'
+  python3 - "$PYPROJECT_FILE" <<'PY'
 from pathlib import Path
 import re
+import sys
 
-text = Path("pyproject.toml").read_text(encoding="utf-8")
+text = Path(sys.argv[1]).read_text(encoding="utf-8")
 match = re.search(r'(?ms)^\[project\]\s.*?^version\s*=\s*"([^"]+)"', text)
 if match is None:
     raise SystemExit("could not read [project].version from pyproject.toml")
@@ -72,32 +75,40 @@ if [[ -z "$TAG" && "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
 fi
 
 expected_tag="v$cargo_version"
+if [[ -z "$TAG" && "$DRY_RUN" == false ]]; then
+  echo "error: publishing requires a version tag matching '$expected_tag'" >&2
+  exit 1
+fi
+
 if [[ -n "$TAG" && "$TAG" != "$expected_tag" ]]; then
   echo "error: release tag '$TAG' does not match manifest version '$expected_tag'" >&2
   exit 1
 fi
 
-crate_url="https://crates.io/api/v1/crates/$CRATE_NAME/$cargo_version"
-http_status="$(
-  curl --retry 3 --silent --show-error --output /dev/null --write-out '%{http_code}'     --user-agent "siderust-py-release-script" "$crate_url"
-)"
-
 already_published=false
-case "$http_status" in
-  200)
-    already_published=true
-    ;;
-  404)
-    ;;
-  *)
-    echo "error: crates.io version check failed with HTTP $http_status" >&2
-    exit 1
-    ;;
-esac
+if [[ "$DRY_RUN" == false ]]; then
+  crate_url="https://crates.io/api/v1/crates/$CRATE_NAME/$cargo_version"
+  http_status="$(
+    curl --retry 3 --silent --show-error --output /dev/null --write-out '%{http_code}' \
+      --user-agent "siderust-py-release-script" "$crate_url"
+  )"
 
-if [[ "$already_published" == true && "$DRY_RUN" == false ]]; then
-  echo "$CRATE_NAME $cargo_version is already published; nothing to do."
-  exit 0
+  case "$http_status" in
+    200)
+      already_published=true
+      ;;
+    404)
+      ;;
+    *)
+      echo "error: crates.io version check failed with HTTP $http_status" >&2
+      exit 1
+      ;;
+  esac
+
+  if [[ "$already_published" == true ]]; then
+    echo "$CRATE_NAME $cargo_version is already published; nothing to do."
+    exit 0
+  fi
 fi
 
 echo "Validating $CRATE_NAME $cargo_version..."
@@ -131,6 +142,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+pyo3 = "0.29"
 siderust-py = { path = "../package/$CRATE_NAME-$cargo_version", version = "$version_requirement" }
 EOF
 
