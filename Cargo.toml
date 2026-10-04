@@ -12,7 +12,7 @@ name = "siderust_py"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-siderust = { path = "siderust", features = [] }
+siderust = { version = "0.12", features = [] }
 qtty     = "0.8"
 tempoch  = "0.7"
 affn     = { version = "0.10", features = ["astro"] }

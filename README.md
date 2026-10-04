@@ -13,7 +13,7 @@ pip install siderust
 **From source** (requires Rust toolchain and [maturin](https://www.maturin.rs)):
 
 ```bash
-git clone --recurse-submodules https://github.com/Siderust/siderust-py.git
+git clone https://github.com/Siderust/siderust-py.git
 cd siderust-py
 pip install maturin
 maturin develop
