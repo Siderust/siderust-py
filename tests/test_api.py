@@ -1,5 +1,6 @@
 """Tests for core siderust API surface."""
 
+import pytest
 import siderust
 from siderust import (
     Body,
@@ -72,6 +73,14 @@ class TestObserver:
     def test_default_height(self):
         obs = Observer(0.0, 0.0)
         assert abs(obs.height_m) < 1e-6
+
+    @pytest.mark.parametrize("field", ["lon_deg", "lat_deg", "height_m"])
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_values_are_rejected(self, field, value):
+        parts = {"lon_deg": 0.0, "lat_deg": 0.0, "height_m": 0.0}
+        parts[field] = value
+        with pytest.raises(ValueError, match=rf"{field} must be finite"):
+            Observer(**parts)
 
     def test_roque(self):
         obs = Observer.roque_de_los_muchachos()
@@ -164,8 +173,6 @@ class TestStar:
         assert s1.name == s2.name
 
     def test_catalog_unknown(self):
-        import pytest
-
         with pytest.raises(ValueError, match="Unknown star"):
             Star.catalog("Nonexistent")
 
@@ -204,6 +211,14 @@ class TestDirection:
         d = Direction(ra_deg=180.0, dec_deg=45.0)
         assert abs(d.ra_deg - 180.0) < 0.01
         assert abs(d.dec_deg - 45.0) < 0.01
+
+    @pytest.mark.parametrize("field", ["ra_deg", "dec_deg"])
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_values_are_rejected(self, field, value):
+        parts = {"ra_deg": 0.0, "dec_deg": 0.0}
+        parts[field] = value
+        with pytest.raises(ValueError, match=rf"{field} must be finite"):
+            Direction(**parts)
 
     def test_altitude_at(self):
         obs = Observer.roque_de_los_muchachos()
@@ -264,8 +279,6 @@ class TestAltitudeQueries:
         assert isinstance(az, float)
 
     def test_invalid_target_type(self):
-        import pytest
-
         obs = Observer.roque_de_los_muchachos()
         with pytest.raises(TypeError, match="target must be"):
             altitude_at("not a target", obs, 60000.0)
@@ -287,8 +300,6 @@ class TestThresholdQueries:
         assert isinstance(periods, list)
 
     def test_invalid_window(self):
-        import pytest
-
         obs = Observer.roque_de_los_muchachos()
         with pytest.raises(ValueError, match="Invalid time window"):
             above_threshold(Body.Sun, obs, 60001.0, 60000.0, 0.0)
