@@ -51,7 +51,7 @@ PY
 
 expect_failure   version-mismatch   "does not match pyproject.toml"   env SIDERUST_PY_PYPROJECT_FILE="$tmp_dir/pyproject-mismatch.toml"   bash scripts/publish-release.sh --dry-run
 
-expect_failure   wrong-tag   "does not match manifest version"   bash scripts/publish-release.sh --dry-run --tag v0.2.2
+expect_failure   wrong-tag   "does not match manifest version"   bash scripts/publish-release.sh --dry-run --tag v9.9.9
 
 expect_failure   publish-without-tag   "publishing requires a version tag"   env -u GITHUB_REF_TYPE -u GITHUB_REF_NAME   bash scripts/publish-release.sh
 
