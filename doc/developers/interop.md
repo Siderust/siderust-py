@@ -33,7 +33,20 @@ boundary.
   north-positive latitude in degrees, and ellipsoidal height in metres. It
   reconstructs exactly `Geodetic<ECEF>`.
 - `DirectionParts` carries right ascension and declination in degrees in the
-  current Siderust `direction::ICRS` frame (ICRS axes aligned to J2000).
+  Siderust `direction::ICRS` frame.
+
+## Protocol compatibility
+
+The canonical extension exposes a private integer `_bridge_protocol_version`.
+The Rust interop API checks it before calling any bridge hook. Protocol 1
+defines the primitive representations documented above. A missing, malformed,
+or different protocol produces `ImportError` with the expected and installed
+versions instead of failing later with an obscure missing-function error.
+
+The Rust `siderust-py` dependency linked into a downstream extension and the
+installed Python `siderust` package must support the same bridge protocol.
+This protocol version, rather than the package semantic version, is the
+compatibility contract.
 
 ## Cargo setup
 
@@ -43,11 +56,19 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.29"
-siderust-py = { git = "https://github.com/Siderust/siderust-py.git" }
+# Use this once siderust-py is published on crates.io:
+siderust-py = "0.1"
 ```
 
-For adjacent checkouts, use
-`siderust-py = { path = "../siderust.py" }` instead.
+Until a crate release is available, pin the Git dependency to an immutable tag
+or full commit hash rather than tracking a moving branch:
+
+```toml
+siderust-py = { git = "https://github.com/Siderust/siderust-py.git", rev = "<40-character commit SHA>" }
+```
+
+For adjacent checkouts during workspace development, use
+`siderust-py = { path = "../siderust.py" }`.
 
 ## Observer example
 

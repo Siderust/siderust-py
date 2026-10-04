@@ -73,8 +73,8 @@ obs = Observer.el_paranal()
 obs = Observer.mauna_kea()
 obs = Observer.la_silla()
 
-obs.lon_deg   # longitude
-obs.lat_deg   # latitude
+obs.lon_deg  # longitude
+obs.lat_deg  # latitude
 obs.height_m  # height above ellipsoid
 ```
 
@@ -82,19 +82,19 @@ obs.height_m  # height above ellipsoid
 
 ```python
 Body.Sun.altitude_at(observer, mjd)  # degrees
-Body.Sun.azimuth_at(observer, mjd)   # degrees
+Body.Sun.azimuth_at(observer, mjd)  # degrees
 ```
 
 ### Star
 
 ```python
-vega = Star.catalog("Vega")       # built-in catalog
-s = Star.from_ra_dec("X", 10, 20) # custom RA/Dec
+vega = Star.catalog("Vega")  # built-in catalog
+s = Star.from_ra_dec("X", 10, 20)  # custom RA/Dec
 
-vega.name           # "Vega"
-vega.ra_deg          # right ascension
-vega.dec_deg         # declination
-vega.distance_ly     # distance in light-years
+vega.name  # "Vega"
+vega.ra_deg  # right ascension
+vega.dec_deg  # declination
+vega.distance_ly  # distance in light-years
 vega.altitude_at(obs, mjd)
 vega.azimuth_at(obs, mjd)
 ```
@@ -102,14 +102,14 @@ vega.azimuth_at(obs, mjd)
 ### Free Functions
 
 ```python
-altitude_at(target, observer, mjd)                           # degrees
-azimuth_at(target, observer, mjd)                            # degrees
-above_threshold(target, observer, start, end, threshold)     # [(s,e), ...]
-below_threshold(target, observer, start, end, threshold)     # [(s,e), ...]
-crossings(target, observer, start, end, threshold)           # [CrossingEvent]
-culminations(target, observer, start, end)                   # [CulminationEvent]
-moon_phase(jd, observer=None)                                # MoonPhaseGeometry
-find_moon_phases(start_mjd, end_mjd)                         # [PhaseEvent]
+altitude_at(target, observer, mjd)  # degrees
+azimuth_at(target, observer, mjd)  # degrees
+above_threshold(target, observer, start, end, threshold)  # [(s,e), ...]
+below_threshold(target, observer, start, end, threshold)  # [(s,e), ...]
+crossings(target, observer, start, end, threshold)  # [CrossingEvent]
+culminations(target, observer, start, end)  # [CulminationEvent]
+moon_phase(jd, observer=None)  # MoonPhaseGeometry
+find_moon_phases(start_mjd, end_mjd)  # [PhaseEvent]
 ```
 
 `target` can be a `Body`, `Star`, or `Direction`.

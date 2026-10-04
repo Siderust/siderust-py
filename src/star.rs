@@ -94,7 +94,7 @@ impl PyStar {
                 name.to_string(),
                 LightYears::new(1.0),
                 SolarMasses::new(1.0),
-                qtty::length::nominal::SolarRadiuses::new(1.0),
+                siderust::qtty::length::nominal::SolarRadiuses::new(1.0),
                 SolarLuminosities::new(1.0),
                 coord,
             ),

@@ -2,8 +2,34 @@
 
 import _siderust_interop_consumer as consumer
 import pytest
+import siderust._siderust as canonical_extension
 
 import siderust
+
+
+def test_bridge_protocol_matches_canonical_extension():
+    assert canonical_extension._bridge_protocol_version == 1
+    assert consumer.bridge_protocol_version() == 1
+
+
+def test_bridge_rejects_incompatible_protocol(monkeypatch):
+    monkeypatch.setattr(canonical_extension, "_bridge_protocol_version", 999)
+
+    with pytest.raises(
+        ImportError,
+        match=r"incompatible siderust bridge protocol: expected 1, found 999",
+    ):
+        consumer.observer_parts(siderust.Observer(0.0, 0.0))
+
+
+def test_bridge_rejects_missing_protocol(monkeypatch):
+    monkeypatch.delattr(canonical_extension, "_bridge_protocol_version")
+
+    with pytest.raises(
+        ImportError,
+        match=r"does not expose a valid _bridge_protocol_version; expected bridge protocol 1",
+    ):
+        consumer.direction_parts(siderust.Direction(0.0, 0.0))
 
 
 def test_observer_cross_extension_round_trip():

@@ -95,6 +95,7 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         coordinates::_bridge_direction_from_parts,
         m
     )?)?;
+    m.add("_bridge_protocol_version", interop::BRIDGE_PROTOCOL_VERSION)?;
 
     // Twilight constants
     m.add("TWILIGHT_HORIZON", queries::TWILIGHT_HORIZON)?;

@@ -1,8 +1,14 @@
 use pyo3::prelude::*;
 use siderust_py::interop::{
-    direction_from_python, direction_to_python, observer_from_python, observer_to_python,
-    DirectionParts, ObserverParts,
+    direction_from_python, direction_to_python, ensure_bridge_protocol, observer_from_python,
+    observer_to_python, DirectionParts, ObserverParts, BRIDGE_PROTOCOL_VERSION,
 };
+
+#[pyfunction]
+fn bridge_protocol_version(py: Python<'_>) -> PyResult<u32> {
+    ensure_bridge_protocol(py)?;
+    Ok(BRIDGE_PROTOCOL_VERSION)
+}
 
 #[pyfunction]
 fn observer_parts(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64, f64)> {
@@ -34,6 +40,7 @@ fn direction_round_trip(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Py
 
 #[pymodule]
 fn _siderust_interop_consumer(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(bridge_protocol_version, m)?)?;
     m.add_function(wrap_pyfunction!(observer_parts, m)?)?;
     m.add_function(wrap_pyfunction!(observer_round_trip, m)?)?;
     m.add_function(wrap_pyfunction!(direction_parts, m)?)?;
