@@ -56,12 +56,11 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.29"
-# Use this once siderust-py is published on crates.io:
-siderust-py = "0.1"
+siderust-py = "0.2"
 ```
 
-Until a crate release is available, pin the Git dependency to an immutable tag
-or full commit hash rather than tracking a moving branch:
+For unreleased siderust-py changes, pin a Git dependency to an immutable tag or
+full commit hash rather than tracking a moving branch:
 
 ```toml
 siderust-py = { git = "https://github.com/Siderust/siderust-py.git", rev = "<40-character commit SHA>" }
