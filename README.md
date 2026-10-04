@@ -1,118 +1,285 @@
-# siderust — Astrometry & Astrodynamics for Python
+# siderust-py
 
-Python bindings for the [siderust](https://github.com/Siderust/siderust) Rust
-library, providing observation planning, coordinate queries, ephemeris access,
-and moon-phase computation — all backed by Rust for performance and precision.
+[![Crates.io](https://img.shields.io/crates/v/siderust-py.svg)](https://crates.io/crates/siderust-py)
+[![Docs.rs](https://docs.rs/siderust-py/badge.svg)](https://docs.rs/siderust-py)
+[![CI](https://github.com/Siderust/siderust-py/actions/workflows/ci.yml/badge.svg)](https://github.com/Siderust/siderust-py/actions/workflows/ci.yml)
+[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+
+Astrometry and astrodynamics for Python, powered by the
+[siderust](https://github.com/Siderust/siderust) Rust library through PyO3.
+
+`siderust-py` provides Python-native access to observation planning,
+coordinate queries, ephemerides, solar-system bodies, stellar targets,
+moon-phase calculations, and related astronomy utilities while keeping the
+numerical implementation in Rust.
+
+The Crates.io and docs.rs badges above refer to the `siderust-py` Rust crate,
+which exposes the supported cross-extension interoperability API. The Python
+package is imported as `siderust`.
+
+## Features
+
+- **Rust-backed astronomy** with Python orchestration and Pythonic result types
+- **Observers and observing sites**, including predefined major observatories
+- **Solar-system bodies and stars** with altitude and azimuth queries
+- **Coordinate types** including directions, positions, and spherical positions
+- **Observation events** such as threshold crossings and culminations
+- **Visibility windows** above or below configurable altitude thresholds
+- **Twilight thresholds** for horizon, civil, nautical, and astronomical twilight
+- **Moon phase geometry and events**
+- **Targets and proper motion** for epoch-aware stellar tracking
+- **Orbit, comet, and runtime ephemeris** bindings
+- **PyO3 interoperability** for exchanging canonical `Observer` and `Direction`
+  objects across independently compiled Rust extensions
 
 ## Installation
+
+Install the Python package with pip:
 
 ```bash
 pip install siderust
 ```
 
-**From source** (requires Rust toolchain and [maturin](https://www.maturin.rs)):
+To build from source, install a Rust toolchain and Maturin:
 
 ```bash
 git clone https://github.com/Siderust/siderust-py.git
 cd siderust-py
-pip install maturin
+
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+python -m pip install --upgrade pip
+python -m pip install "maturin>=1.9.4,<2"
 maturin develop
 ```
 
 ## Quick Start
 
 ```python
-from siderust import Observer, Body, Star, crossings, CrossingDirection
+from siderust import Body, CrossingDirection, Observer, Star, crossings
 
-# 1. Pick an observatory
-obs = Observer.roque_de_los_muchachos()
+# Pick an observatory.
+observer = Observer.roque_de_los_muchachos()
 
-# 2. Find sunrise and sunset over one day (MJD 60 000)
-events = crossings(Body.Sun, obs, 60000.0, 60001.0, threshold_deg=0.0)
-for e in events:
-    label = "Sunrise" if e.direction == CrossingDirection.Rising else "Sunset"
-    print(f"{label} at MJD {e.mjd:.6f}")
+# Find sunrise and sunset over one day (MJD 60 000).
+events = crossings(
+    Body.Sun,
+    observer,
+    60000.0,
+    60001.0,
+    threshold_deg=0.0,
+)
 
-# 3. Check star visibility at midnight
+for event in events:
+    label = (
+        "Sunrise"
+        if event.direction == CrossingDirection.Rising
+        else "Sunset"
+    )
+    print(f"{label} at MJD {event.mjd:.6f}")
+
+# Check a star altitude.
 vega = Star.catalog("Vega")
-alt = vega.altitude_at(obs, 60000.75)
-print(f"Vega altitude at midnight: {alt:.2f}°")
+altitude = vega.altitude_at(observer, 60000.75)
+print(f"Vega altitude: {altitude:.2f}°")
 ```
 
-## Features
+## Core API
 
-| Area | API |
-|------|-----|
-| **Observers** | `Observer(lon, lat, h)`, `.roque_de_los_muchachos()`, `.el_paranal()`, `.mauna_kea()`, `.la_silla()` |
-| **Bodies** | `Body.Sun`, `.Moon`, `.Mercury` … `.Neptune` |
-| **Stars** | `Star.catalog("Vega")`, `Star.from_ra_dec(name, ra, dec)` |
-| **Directions** | `Direction(ra_deg, dec_deg)` — fixed ICRS position |
-| **Altitude** | `altitude_at()`, `above_threshold()`, `below_threshold()` |
-| **Events** | `crossings()`, `culminations()` |
-| **Azimuth** | `azimuth_at()` |
-| **Moon phase** | `moon_phase(jd)`, `find_moon_phases(start, end)` |
-
-All heavy computation happens in compiled Rust. Python is used only for
-orchestration and display.
-
-Downstream Rust/PyO3 extensions should use the documented
-[`siderust_py::interop`](doc/developers/interop.md) API to exchange canonical
-Python `Observer` and `Direction` objects safely across extension boundaries.
-
-## API Reference
+| Area | Main API |
+|------|----------|
+| **Observers** | `Observer`, predefined observatories |
+| **Solar system** | `Body`, `Orbit`, `Comet`, `RuntimeEphemeris` |
+| **Stars and targets** | `Star`, `Target`, `ProperMotion`, `apply_proper_motion()` |
+| **Coordinates** | `Direction`, `Position`, `SphericalPosition` |
+| **Altitude / azimuth** | `altitude_at()`, `azimuth_at()` |
+| **Visibility** | `above_threshold()`, `below_threshold()` |
+| **Events** | `crossings()`, `culminations()`, `intersect_periods()` |
+| **Moon phase** | `moon_phase()`, `find_moon_phases()` |
+| **Twilight** | `TWILIGHT_HORIZON`, `TWILIGHT_CIVIL`, `TWILIGHT_NAUTICAL`, `TWILIGHT_ASTRONOMICAL` |
 
 ### Observer
 
 ```python
-# Custom location
-obs = Observer(lon_deg=-17.89, lat_deg=28.75, height_m=2396.0)
+from siderust import Observer
 
-# Predefined sites
-obs = Observer.roque_de_los_muchachos()
-obs = Observer.el_paranal()
-obs = Observer.mauna_kea()
-obs = Observer.la_silla()
+observer = Observer(
+    lon_deg=-17.89,
+    lat_deg=28.75,
+    height_m=2396.0,
+)
 
-obs.lon_deg  # longitude
-obs.lat_deg  # latitude
-obs.height_m  # height above ellipsoid
+observer = Observer.roque_de_los_muchachos()
+observer = Observer.el_paranal()
+observer = Observer.mauna_kea()
+observer = Observer.la_silla()
+
+print(observer.lon_deg)
+print(observer.lat_deg)
+print(observer.height_m)
 ```
 
-### Body
+### Bodies and stars
 
 ```python
-Body.Sun.altitude_at(observer, mjd)  # degrees
-Body.Sun.azimuth_at(observer, mjd)  # degrees
+from siderust import Body, Star
+
+sun_altitude = Body.Sun.altitude_at(observer, 60000.0)
+sun_azimuth = Body.Sun.azimuth_at(observer, 60000.0)
+
+vega = Star.catalog("Vega")
+custom = Star.from_ra_dec("Target", 10.0, 20.0)
+
+print(vega.name)
+print(vega.ra_deg)
+print(vega.dec_deg)
+print(vega.distance_ly)
 ```
 
-### Star
+### Visibility and events
 
 ```python
-vega = Star.catalog("Vega")  # built-in catalog
-s = Star.from_ra_dec("X", 10, 20)  # custom RA/Dec
+from siderust import (
+    Body,
+    above_threshold,
+    below_threshold,
+    crossings,
+    culminations,
+)
 
-vega.name  # "Vega"
-vega.ra_deg  # right ascension
-vega.dec_deg  # declination
-vega.distance_ly  # distance in light-years
-vega.altitude_at(obs, mjd)
-vega.azimuth_at(obs, mjd)
+visible = above_threshold(
+    Body.Moon,
+    observer,
+    60000.0,
+    60001.0,
+    20.0,
+)
+
+hidden = below_threshold(
+    Body.Moon,
+    observer,
+    60000.0,
+    60001.0,
+    20.0,
+)
+
+rise_set = crossings(
+    Body.Sun,
+    observer,
+    60000.0,
+    60001.0,
+    0.0,
+)
+
+transits = culminations(
+    Body.Sun,
+    observer,
+    60000.0,
+    60001.0,
+)
 ```
 
-### Free Functions
+`target` arguments accepted by the common observing functions can be a
+`Body`, `Star`, or `Direction`.
 
-```python
-altitude_at(target, observer, mjd)  # degrees
-azimuth_at(target, observer, mjd)  # degrees
-above_threshold(target, observer, start, end, threshold)  # [(s,e), ...]
-below_threshold(target, observer, start, end, threshold)  # [(s,e), ...]
-crossings(target, observer, start, end, threshold)  # [CrossingEvent]
-culminations(target, observer, start, end)  # [CulminationEvent]
-moon_phase(jd, observer=None)  # MoonPhaseGeometry
-find_moon_phases(start_mjd, end_mjd)  # [PhaseEvent]
+## Examples
+
+The repository includes runnable examples covering the larger API surface:
+
+- [Basic coordinates](examples/01_basic_coordinates.py)
+- [Coordinate transformations](examples/02_coordinate_transformations.py)
+- [Reference-frame conversions](examples/03_all_frames_conversions.py)
+- [Reference-center conversions](examples/04_all_center_conversions.py)
+- [Target tracking](examples/05_target_tracking.py)
+- [Night events](examples/06_night_events.py)
+- [Moon properties](examples/07_moon_properties.py)
+- [Solar-system calculations](examples/08_solar_system.py)
+- [Star observability](examples/09_star_observability.py)
+- [Time periods](examples/10_time_periods.py)
+- [Serialization](examples/11_serialization.py)
+- [Runtime ephemerides](examples/12_runtime_ephemeris.py)
+- [Coordinate operations](examples/13_coordinate_operations.py)
+
+## Rust / PyO3 interoperability
+
+The project also builds an `rlib` so downstream Rust/PyO3 extensions can
+exchange canonical Python `siderust.Observer` and `siderust.Direction`
+objects without relying on duplicate PyO3 class registrations.
+
+Add the published interoperability crate to a Rust extension:
+
+```toml
+[dependencies]
+pyo3 = "0.29"
+siderust-py = "0.2"
 ```
 
-`target` can be a `Body`, `Star`, or `Direction`.
+The public bridge lives under `siderust_py::interop` and uses a versioned,
+primitive-only protocol across extension boundaries.
+
+See [Cross-extension interoperability](doc/developers/interop.md) for the
+compatibility contract, Cargo setup, and complete examples.
+
+## Relationship with siderust
+
+`siderust-py` is the Python interface to the
+[`siderust`](https://github.com/Siderust/siderust) Rust library. Core
+astronomy and astrodynamics algorithms remain implemented in Rust; this
+repository focuses on Python bindings, Python-facing ergonomics, and safe
+cross-extension interoperability.
+
+- Rust core crate: [crates.io/crates/siderust](https://crates.io/crates/siderust)
+- Rust core API: [docs.rs/siderust](https://docs.rs/siderust)
+- Python/Rust interop crate: [crates.io/crates/siderust-py](https://crates.io/crates/siderust-py)
+- Interop API docs: [docs.rs/siderust-py](https://docs.rs/siderust-py)
+
+## Development
+
+Prerequisites:
+
+- Rust stable toolchain
+- Python 3.8+
+- Maturin 1.9.4 or newer
+- pytest
+- Ruff
+
+Local setup:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+python -m pip install --upgrade pip
+python -m pip install "maturin>=1.9.4,<2" pytest pytest-cov ruff
+maturin develop
+```
+
+Common checks used by CI:
+
+```bash
+# Python tests
+pytest tests/ -v
+
+# Rust tests
+cargo test --all-targets
+
+# Formatting
+cargo fmt --all -- --check
+python -m ruff format --check python tests examples scripts
+
+# Linting
+cargo clippy --all-targets --all-features -- -D warnings
+python -m ruff check python tests examples scripts
+```
+
+The CI matrix validates Python 3.8 through 3.12 and also exercises the
+cross-extension bridge contract on Linux, macOS, and Windows.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## License
 
