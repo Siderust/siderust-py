@@ -16,21 +16,22 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   PACKAGE_NAME: siderust
+  MATURIN_VERSION: v1.15.0
 
 jobs:
   fmt:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.0.0
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: pip
       - name: Install formatter
         run: python -m pip install --upgrade pip ruff
@@ -45,16 +46,16 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.0.0
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: pip
       - name: Install linters
         run: python -m pip install --upgrade pip ruff
@@ -69,7 +70,7 @@ jobs:
     name: Rust Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
@@ -77,23 +78,23 @@ jobs:
       - name: Run Rust tests
         run: cargo test --all-targets
 
-  release-package:
-    name: Release package validation
+  crates-package:
+    name: crates.io Package Validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.0.0
         with:
-          python-version: "3.12"
+          python-version: "3.14"
       - name: Test release policy guards
         run: bash scripts/test-publish-release-policy.sh
-      - name: Validate packaged release
+      - name: Validate packaged crate and publish dry-run
         run: bash scripts/publish-release.sh --dry-run
 
   bridge-contract:
@@ -104,14 +105,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.0.0
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: pip
       - name: Build extensions and run bridge contract
         run: python scripts/test_interop_contract.py
@@ -122,22 +123,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-minor: ["8", "9", "10", "11", "12"]
+        python-minor: ["8", "9", "10", "11", "12", "13", "14"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Set up Python 3.${{ matrix.python-minor }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7.0.0
         with:
           python-version: "3.${{ matrix.python-minor }}"
           cache: pip
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest maturin
+          python -m pip install pytest
           python -m pip install .
           python -m pip install ./tests/interop_consumer
       - name: Run Python tests
@@ -146,24 +147,76 @@ jobs:
           cd "$tmpdir"
           python -m pytest --rootdir "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/tests"
 
+  distribution-package:
+    name: PyPI Distribution Validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install wheel test dependencies
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Build PyPI-compatible wheel
+        uses: PyO3/maturin-action@v1.51.0
+        with:
+          command: build
+          maturin-version: ${{ env.MATURIN_VERSION }}
+          manylinux: "2_28"
+          args: >-
+            --release
+            --compatibility pypi
+            --out dist
+            -i python3.14
+
+      - name: Install built wheel
+        run: python -m pip install --force-reinstall dist/*.whl
+
+      - name: Test installed wheel
+        run: |
+          tmpdir="$(mktemp -d)"
+          cd "$tmpdir"
+          python -m pytest --rootdir "$GITHUB_WORKSPACE" "$GITHUB_WORKSPACE/tests/test_api.py"
+
+      - name: Build source distribution
+        uses: PyO3/maturin-action@v1.51.0
+        with:
+          command: sdist
+          maturin-version: ${{ env.MATURIN_VERSION }}
+          args: --out dist
+
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: siderust-release-package
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
   coverage:
     name: Coverage
     if: ${{ github.event_name == 'push' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.0.0
         with:
-          python-version: "3.12"
+          python-version: "3.14"
           cache: pip
       - name: Install coverage dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-cov maturin
+          python -m pip install pytest pytest-cov
           python -m pip install .
           python -m pip install ./tests/interop_consumer
       - name: Run coverage
@@ -182,7 +235,7 @@ jobs:
             "$GITHUB_WORKSPACE/tests"
       - name: Upload coverage artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: siderust-coverage
           path: |
