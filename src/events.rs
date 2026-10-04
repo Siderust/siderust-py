@@ -1,7 +1,6 @@
 //! Altitude/azimuth event types for Python.
 
 use pyo3::prelude::*;
-use qtty::*;
 use siderust::{CrossingDirection, CrossingEvent, CulminationEvent, CulminationKind};
 
 /// Direction of a threshold crossing.

@@ -6,7 +6,6 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use qtty::*;
 use siderust::coordinates::cartesian::Position as CPosition;
 use siderust::coordinates::centers::{Barycentric, Geocentric, Heliocentric};
 use siderust::coordinates::frames::{
@@ -14,7 +13,8 @@ use siderust::coordinates::frames::{
 };
 use siderust::coordinates::transform::ext::PositionAstroExt;
 use siderust::coordinates::transform::TransformCenter;
-use tempoch::JulianDate;
+use siderust::qtty::*;
+use siderust::time::JulianDate;
 
 // =============================================================================
 // Frame / Center string constants

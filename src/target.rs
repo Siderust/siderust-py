@@ -7,12 +7,12 @@
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use qtty::*;
 use siderust::astro::proper_motion;
 use siderust::bodies::solar_system;
 use siderust::coordinates::spherical::direction;
+use siderust::qtty::*;
 use siderust::targets::Trackable;
-use tempoch::JulianDate;
+use siderust::time::JulianDate;
 
 use crate::bodies::PyBody;
 use crate::coordinates::PyDirection;

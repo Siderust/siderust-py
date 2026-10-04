@@ -98,8 +98,9 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest
+          python -m pip install pytest maturin
           python -m pip install .
+          python -m pip install ./tests/interop_consumer
       - name: Run Python tests
         run: |
           tmpdir="$(mktemp -d)"
@@ -124,8 +125,9 @@ jobs:
       - name: Install coverage dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest pytest-cov
+          python -m pip install pytest pytest-cov maturin
           python -m pip install .
+          python -m pip install ./tests/interop_consumer
       - name: Run coverage
         run: |
           rm -f coverage.xml

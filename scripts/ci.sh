@@ -15,6 +15,7 @@ source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install ruff pytest pytest-cov
 python -m pip install .
+python -m pip install ./tests/interop_consumer
 
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings

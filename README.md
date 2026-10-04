@@ -55,6 +55,10 @@ print(f"Vega altitude at midnight: {alt:.2f}°")
 All heavy computation happens in compiled Rust. Python is used only for
 orchestration and display.
 
+Downstream Rust/PyO3 extensions should use the documented
+[`siderust_py::interop`](doc/developers/interop.md) API to exchange canonical
+Python `Observer` and `Direction` objects safely across extension boundaries.
+
 ## API Reference
 
 ### Observer
