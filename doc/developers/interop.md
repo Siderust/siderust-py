@@ -6,10 +6,10 @@ PyO3 extension accept and return the canonical `siderust.Observer` and
 
 ## Supported baseline
 
-- Siderust: `0.12.x`
+- Siderust: `0.13.x`
 - qtty: `0.8.x`
 - tempoch: `0.7.x`
-- affn: `0.10.x`
+- affn: `0.11.x`
 - PyO3: `0.29.x`
 - siderust-py library outputs: `cdylib` and `rlib`
 

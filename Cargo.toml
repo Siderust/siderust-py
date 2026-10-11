@@ -1,6 +1,6 @@
 [package]
 name = "siderust-py"
-version = "0.2.2"
+version = "0.3.0"
 edition = "2021"
 description = "Python bindings for siderust astrometry and astrodynamics"
 license = "AGPL-3.0"
@@ -12,8 +12,8 @@ name = "siderust_py"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-siderust = { version = "0.12", features = [] }
-affn     = { version = "0.10", features = ["astro"] }
+siderust = { version = "0.13.0", features = [] }
+affn     = { version = "0.11", features = ["astro"] }
 pyo3     = { version = "0.29" }
 
 [dev-dependencies]
