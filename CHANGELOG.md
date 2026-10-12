@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-12
+
+### Changed
+
+- Temporarily pin the Siderust and Principia release preparation commits until their crates.io releases.
+
+- **Breaking:** upgrade the Rust dependency to `siderust` 0.14.0, using `tempoch` 0.10 time primitives.
+- Synchronize the Rust crate and Python distribution versions at 0.4.0.
+
 ## [0.3.0] - 2026-10-11
 
 ### Changed
