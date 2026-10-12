@@ -19,8 +19,3 @@ pyo3     = { version = "0.29" }
 [dev-dependencies]
 pyo3    = { version = "0.29", features = ["auto-initialize"] }
 approx  = "0.5"
-
-# Temporary release bridges: remove after principia 0.6.0 and siderust 0.14.0 are published.
-[patch.crates-io]
-principia = { git = "https://github.com/Siderust/principia.git", rev = "15ad371f92a51042256918bee81f847206e3714e" }
-siderust = { git = "https://github.com/Siderust/siderust.git", rev = "1017a102932bfcf2de330883924b2f7f08b5286c" }
