@@ -31,7 +31,7 @@ type OrbitReduceArgs = (f64, f64, f64, f64, f64, f64, f64);
 ///     ...     arg_perihelion_deg=102.95, mean_anomaly_deg=100.46,
 ///     ...     epoch_jd=2451545.0)
 ///     >>> pos = orbit.kepler_position(2451545.0)
-#[pyclass(name = "Orbit", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "Orbit", module = "siderust")]
 #[derive(Clone)]
 pub struct PyOrbit {
     pub(crate) inner: Orbit,
@@ -228,7 +228,7 @@ impl PyOrbit {
 /// Example:
 ///     >>> halley = Comet.halley()
 ///     >>> pos = halley.orbit.kepler_position(2451545.0)
-#[pyclass(name = "Comet", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "Comet", module = "siderust")]
 #[derive(Clone)]
 pub struct PyComet {
     pub(crate) name: String,

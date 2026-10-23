@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-10-23
+
+### Changed
+
+- **Breaking:** upgrade the Rust dependency to `siderust` 0.15.0 with public Affn 0.12.1 and Tempoch 0.11.1 type identity.
+- **Breaking:** align PyO3 with 0.30.1; drop CPython 3.8 (PyO3 0.30 floor is 3.9+).
+- Synchronize the Rust crate and Python distribution versions at 0.5.0.
+
 ## [0.4.0] - 2026-10-12
 
 ### Changed

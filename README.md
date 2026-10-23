@@ -4,7 +4,7 @@
 [![Docs.rs](https://docs.rs/siderust-py/badge.svg)](https://docs.rs/siderust-py)
 [![CI](https://github.com/Siderust/siderust-py/actions/workflows/ci.yml/badge.svg)](https://github.com/Siderust/siderust-py/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 
 Astrometry and astrodynamics for Python, powered by the
 [siderust](https://github.com/Siderust/siderust) Rust library through PyO3.
@@ -212,8 +212,8 @@ Add the published interoperability crate to a Rust extension:
 
 ```toml
 [dependencies]
-pyo3 = "0.29"
-siderust-py = "0.2"
+pyo3 = "0.30"
+siderust-py = "0.5"
 ```
 
 The public bridge lives under `siderust_py::interop` and uses a versioned,
@@ -240,7 +240,7 @@ cross-extension interoperability.
 Prerequisites:
 
 - Rust stable toolchain
-- Python 3.8+
+- Python 3.9+
 - Maturin 1.9.4 or newer
 - pytest
 - Ruff
@@ -274,7 +274,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 python -m ruff check python tests examples scripts
 ```
 
-The CI matrix validates Python 3.8 through 3.14 and also exercises the
+The CI matrix validates Python 3.9 through 3.14 and also exercises the
 cross-extension bridge contract on Linux, macOS, and Windows.
 
 ## Changelog

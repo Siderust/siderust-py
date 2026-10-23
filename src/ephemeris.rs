@@ -21,7 +21,7 @@ use crate::position::{
 ///     >>> eph = RuntimeEphemeris.from_bsp("de440.bsp")
 ///     >>> sun = eph.sun_barycentric(2451545.0)
 ///     >>> print(sun.distance())
-#[pyclass(name = "RuntimeEphemeris", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "RuntimeEphemeris", module = "siderust")]
 #[derive(Clone)]
 pub struct PyRuntimeEphemeris {
     inner: RuntimeEphemeris,

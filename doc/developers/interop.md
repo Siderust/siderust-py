@@ -6,11 +6,11 @@ PyO3 extension accept and return the canonical `siderust.Observer` and
 
 ## Supported baseline
 
-- Siderust: `0.13.x`
+- Siderust: `0.15.x`
 - qtty: `0.8.x`
-- tempoch: `0.7.x`
-- affn: `0.11.x`
-- PyO3: `0.29.x`
+- tempoch: `0.11.x`
+- affn: `0.12.x`
+- PyO3: `0.30.x`
 - siderust-py library outputs: `cdylib` and `rlib`
 
 Use maturin 1.9.4 or newer. PyO3's `extension-module` feature is deliberately
@@ -55,8 +55,8 @@ compatibility contract.
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.29"
-siderust-py = "0.2"
+pyo3 = "0.30"
+siderust-py = "0.5"
 ```
 
 For unreleased siderust-py changes, pin a Git dependency to an immutable tag or
