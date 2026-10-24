@@ -113,10 +113,10 @@ fi
 
 echo "Validating $CRATE_NAME $cargo_version..."
 cargo fmt --all -- --check
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all-targets
-cargo test --doc
-cargo package
+cargo clippy --all-targets --all-features --locked -- -D warnings
+cargo test --all-targets --all-features --locked
+cargo test --doc --locked
+cargo package --locked
 
 package_archive="target/package/$CRATE_NAME-$cargo_version.crate"
 if [[ ! -f "$package_archive" ]]; then
@@ -134,6 +134,12 @@ mkdir -p "$tmp_dir/package" "$tmp_dir/consumer/src"
 tar -xzf "$package_archive" -C "$tmp_dir/package"
 
 version_requirement="${cargo_version%.*}"
+# Read the public bridge's actual PyO3 requirement so this consumer cannot
+# accidentally introduce a second, incompatible pyo3-python links identity.
+pyo3_requirement="$(
+  cargo metadata --no-deps --format-version 1 |
+    python3 -c 'import json, sys; data = json.load(sys.stdin); package = next(p for p in data["packages"] if p["name"] == "siderust-py"); print(next(d["req"] for d in package["dependencies"] if d["name"] == "pyo3" and d["kind"] is None))'
+)"
 cat > "$tmp_dir/consumer/Cargo.toml" <<EOF
 [package]
 name = "siderust-py-packaged-consumer"
@@ -142,7 +148,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-pyo3 = "0.29"
+pyo3 = "$pyo3_requirement"
 siderust-py = { path = "../package/$CRATE_NAME-$cargo_version", version = "$version_requirement" }
 EOF
 
@@ -160,11 +166,11 @@ pub fn assert_public_interop_api() {
 EOF
 
 cargo check --manifest-path "$tmp_dir/consumer/Cargo.toml"
-cargo publish --dry-run
+cargo publish --dry-run --locked
 
 if [[ "$DRY_RUN" == true ]]; then
   echo "Dry-run validation succeeded for $CRATE_NAME $cargo_version."
   exit 0
 fi
 
-cargo publish
+cargo publish --locked

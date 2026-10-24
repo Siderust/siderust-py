@@ -30,7 +30,7 @@ use crate::star::PyStar;
 ///
 /// Example:
 ///     >>> pm = ProperMotion(pm_ra_mas_yr=27.54, pm_dec_mas_yr=10.86)
-#[pyclass(name = "ProperMotion", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "ProperMotion", module = "siderust")]
 #[derive(Clone)]
 pub struct PyProperMotion {
     pub(crate) inner: proper_motion::ProperMotion,
@@ -125,7 +125,7 @@ enum TargetInner {
 /// Example:
 ///     >>> target = Body.Mars.track(2451545.0)
 ///     >>> print(target.time, target.position.distance())
-#[pyclass(name = "Target", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "Target", module = "siderust")]
 #[derive(Clone)]
 pub struct PyTarget {
     inner: TargetInner,

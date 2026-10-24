@@ -232,7 +232,7 @@ fn convert_center(
 ///     ...                center="Heliocentric", unit="au")
 ///     >>> pos.distance()
 ///     1.0
-#[pyclass(name = "Position", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "Position", module = "siderust")]
 #[derive(Clone)]
 pub struct PyPosition {
     pub(crate) x: f64,
@@ -581,7 +581,7 @@ impl PyPosition {
 /// Example:
 ///     >>> sph = SphericalPosition(lon_deg=100.0, lat_deg=0.0, distance=1.0,
 ///     ...                          frame="EclipticMeanJ2000", center="Heliocentric")
-#[pyclass(name = "SphericalPosition", module = "siderust", skip_from_py_object)]
+#[pyclass(name = "SphericalPosition", module = "siderust")]
 #[derive(Clone)]
 pub struct PySphericalPosition {
     pub lon_deg: f64,

@@ -119,11 +119,12 @@ jobs:
 
   python-test:
     name: Python Test (3.${{ matrix.python-minor }})
-    runs-on: ubuntu-latest
+    # Python 3.9 setup-python binaries are available for Ubuntu 24.04.
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        python-minor: ["8", "9", "10", "11", "12", "13", "14"]
+        python-minor: ["9", "10", "11", "12", "13", "14"]
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -170,6 +171,7 @@ jobs:
           manylinux: "2_28"
           args: >-
             --release
+            --locked
             --compatibility pypi
             --out dist
             -i python3.14
@@ -189,6 +191,11 @@ jobs:
           command: sdist
           maturin-version: ${{ env.MATURIN_VERSION }}
           args: --out dist
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Rebuild and test source distribution in isolation
+        run: bash scripts/check-sdist.sh dist/siderust-*.tar.gz
 
       - uses: actions/upload-artifact@v7.0.1
         with:
