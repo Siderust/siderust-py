@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-10-24
+
+### Fixed
+
+- Eliminate unsound Python-object-to-Rust-payload casts in query dispatch by
+  retaining PyO3 borrow guards throughout Star and Direction operations, without
+  cloning targets or changing public Python or Rust signatures.
+- Cover Body, catalog and custom Star, and Direction dispatch with numerical
+  altitude/azimuth method parity, threshold period partitions, crossing roots
+  and directions, culmination extrema, determinism, and invalid-input regressions
+  for [#13](https://github.com/Siderust/siderust-py/issues/13).
+- Reject non-finite search window endpoints, as well as empty or reversed windows,
+  before passing them to threshold and event searches.
+
 ## [0.5.0] - 2026-10-23
 
 ### Changed
