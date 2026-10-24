@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tempoch-py` 0.5 bridge in the downstream consumer regression suite.
 - Validate isolated sdist rebuilds and installed package metadata before release;
   publish to PyPI only after artifact validation and crates.io completion.
+- Commit the release Cargo.lock and use locked Rust/wheel validation builds.
 
 ### Fixed
 

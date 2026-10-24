@@ -29,6 +29,8 @@ env/
 **/target/
 **/*.rs.bk
 Cargo.lock
+# Keep the release lockfile; standalone test-consumer lockfiles stay ignored.
+!/Cargo.lock
 
 # PyO3/maturin
 *.so
