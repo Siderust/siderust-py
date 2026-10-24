@@ -1,5 +1,8 @@
 """Tests for core siderust API surface."""
 
+import math
+from importlib.metadata import version
+
 import pytest
 
 import siderust
@@ -33,6 +36,7 @@ class TestModuleExports:
     def test_version_exists(self):
         assert hasattr(siderust, "__version__")
         assert isinstance(siderust.__version__, str)
+        assert siderust.__version__ == version("siderust")
 
     def test_all_exports(self):
         expected = {
@@ -283,6 +287,160 @@ class TestAltitudeQueries:
         obs = Observer.roque_de_los_muchachos()
         with pytest.raises(TypeError, match="target must be"):
             altitude_at("not a target", obs, 60000.0)
+
+
+@pytest.fixture(params=["sun", "sirius", "custom-star", "direction"])
+def query_target(request):
+    """Non-circumpolar targets that rise and set at the issue's observing site."""
+    if request.param == "sun":
+        return Body.Sun
+    if request.param == "sirius":
+        return Star.catalog("Sirius")
+    if request.param == "custom-star":
+        return Star.from_ra_dec("Galactic centre", 266.41683, -29.00781)
+    return Direction(266.41683, -29.00781)
+
+
+@pytest.fixture
+def query_observer():
+    return Observer(-70.31634444444444, -24.683427777777776, 2184.6)
+
+
+class TestSafeQueryDispatch:
+    """Regressions for #13: dispatch must use the borrowed Rust payload."""
+
+    @pytest.mark.parametrize("mjd", [60000.0, 60000.25, 60000.75])
+    @pytest.mark.parametrize(
+        ("function", "bounds"),
+        [(altitude_at, (-90.0, 90.0)), (azimuth_at, (0.0, 360.0))],
+    )
+    def test_method_parity(self, query_target, query_observer, mjd, function, bounds):
+        method = getattr(query_target, function.__name__)
+        expected = method(query_observer, mjd)
+        actual = function(query_target, query_observer, mjd)
+        assert math.isfinite(actual)
+        assert bounds[0] <= actual <= bounds[1]
+        assert abs(actual - expected) < 1e-9
+        assert function(query_target, query_observer, mjd) == actual
+
+    def test_catalog_star_parity(self, query_observer):
+        for name in ["Vega", "Polaris", "Canopus"]:
+            star = Star.catalog(name)
+            assert altitude_at(star, query_observer, 60000.0) == pytest.approx(
+                star.altitude_at(query_observer, 60000.0), rel=0, abs=1e-9
+            )
+            assert azimuth_at(star, query_observer, 60000.0) == pytest.approx(
+                star.azimuth_at(query_observer, 60000.0), rel=0, abs=1e-9
+            )
+
+    @pytest.mark.parametrize("threshold", [0.0, 20.0])
+    def test_threshold_periods(self, query_target, query_observer, threshold):
+        start, end = 60000.0, 60002.0
+        above = above_threshold(query_target, query_observer, start, end, threshold)
+        below = below_threshold(query_target, query_observer, start, end, threshold)
+        assert above and below
+        assert above == above_threshold(query_target, query_observer, start, end, threshold)
+        assert below == below_threshold(query_target, query_observer, start, end, threshold)
+        for periods, sign in [(above, 1), (below, -1)]:
+            assert periods == sorted(periods)
+            for left, right in periods:
+                assert math.isfinite(left) and math.isfinite(right)
+                assert start <= left < right <= end
+                midpoint = (left + right) / 2
+                assert sign * (query_target.altitude_at(query_observer, midpoint) - threshold) > 0
+        # The two query results partition the complete window without gaps or overlaps.
+        combined = sorted(above + below)
+        assert combined[0][0] == start
+        assert combined[-1][1] == end
+        for previous, following in zip(combined, combined[1:]):
+            assert previous[1] == pytest.approx(following[0], rel=0, abs=2e-5)
+        assert sum(right - left for left, right in combined) == pytest.approx(
+            end - start, rel=0, abs=1e-4
+        )
+
+    @pytest.mark.parametrize("threshold", [0.0, 20.0])
+    def test_crossings(self, query_target, query_observer, threshold):
+        events = crossings(query_target, query_observer, 60000.0, 60002.0, threshold)
+        snapshot = [(event.mjd, event.direction) for event in events]
+        assert snapshot == [
+            (event.mjd, event.direction)
+            for event in crossings(query_target, query_observer, 60000.0, 60002.0, threshold)
+        ]
+        assert len(events) >= 3
+        assert {event.direction for event in events} == {
+            CrossingDirection.Rising,
+            CrossingDirection.Setting,
+        }
+        assert [event.mjd for event in events] == sorted(event.mjd for event in events)
+        for event in events:
+            assert math.isfinite(event.mjd)
+            assert 60000.0 < event.mjd < 60002.0
+            altitude = query_target.altitude_at(query_observer, event.mjd)
+            assert altitude == pytest.approx(threshold, rel=0, abs=0.01)
+            before = query_target.altitude_at(query_observer, event.mjd - 1 / 1440)
+            after = query_target.altitude_at(query_observer, event.mjd + 1 / 1440)
+            if event.direction == CrossingDirection.Rising:
+                assert before < threshold < after
+            else:
+                assert before > threshold > after
+
+    def test_culminations(self, query_target, query_observer):
+        events = culminations(query_target, query_observer, 60000.0, 60002.0)
+        assert [(event.mjd, event.altitude_deg, event.kind) for event in events] == [
+            (event.mjd, event.altitude_deg, event.kind)
+            for event in culminations(query_target, query_observer, 60000.0, 60002.0)
+        ]
+        assert len(events) >= 3
+        assert {event.kind for event in events} == {CulminationKind.Max, CulminationKind.Min}
+        assert [event.mjd for event in events] == sorted(event.mjd for event in events)
+        for event in events:
+            assert math.isfinite(event.mjd) and math.isfinite(event.altitude_deg)
+            assert 60000.0 < event.mjd < 60002.0
+            assert -90.0 <= event.altitude_deg <= 90.0
+            assert event.altitude_deg == pytest.approx(
+                query_target.altitude_at(query_observer, event.mjd), rel=0, abs=1e-9
+            )
+            before = query_target.altitude_at(query_observer, event.mjd - 5 / 1440)
+            after = query_target.altitude_at(query_observer, event.mjd + 5 / 1440)
+            if event.kind == CulminationKind.Max:
+                assert event.altitude_deg > max(before, after)
+            else:
+                assert event.altitude_deg < min(before, after)
+
+    @pytest.mark.parametrize("target", [None, "Sirius", 42, object()])
+    @pytest.mark.parametrize(
+        ("function", "args"),
+        [
+            (altitude_at, (60000.0,)),
+            (azimuth_at, (60000.0,)),
+            (above_threshold, (60000.0, 60001.0, 0.0)),
+            (below_threshold, (60000.0, 60001.0, 0.0)),
+            (crossings, (60000.0, 60001.0, 0.0)),
+            (culminations, (60000.0, 60001.0)),
+        ],
+    )
+    def test_invalid_target(self, query_observer, target, function, args):
+        with pytest.raises(TypeError, match="target must be a Body, Star, or Direction"):
+            function(target, query_observer, *args)
+
+    @pytest.mark.parametrize(
+        "function", [above_threshold, below_threshold, crossings, culminations]
+    )
+    @pytest.mark.parametrize(
+        ("start", "end"),
+        [
+            (60000.0, 60000.0),
+            (60001.0, 60000.0),
+            (float("nan"), 60001.0),
+            (60000.0, float("nan")),
+            (float("-inf"), 60001.0),
+            (60000.0, float("inf")),
+        ],
+    )
+    def test_invalid_window(self, query_target, query_observer, function, start, end):
+        args = () if function is culminations else (0.0,)
+        with pytest.raises(ValueError, match="Invalid time window"):
+            function(query_target, query_observer, start, end, *args)
 
 
 class TestThresholdQueries:

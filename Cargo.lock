@@ -653,7 +653,7 @@ dependencies = [
 
 [[package]]
 name = "siderust-py"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "affn",
  "approx",

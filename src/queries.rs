@@ -19,30 +19,27 @@ use crate::star::PyStar;
 // Helper: dispatch to the right provider based on what the user passed
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Enum to unify the different subject types for dispatch.
-enum Subject<'a> {
+/// Keep the Python borrow guards alive for the entire provider operation.
+enum Subject<'py> {
     Body(PyBody),
-    Star(&'a PyStar),
-    Dir(&'a PyDirection),
+    Star(PyRef<'py, PyStar>),
+    Dir(PyRef<'py, PyDirection>),
 }
 
 /// A Python-friendly "subject" that can be a Body, Star, or Direction.
 /// We accept `&Bound<'_, PyAny>` and try to extract each type.
-fn extract_subject<'a>(target: &'a Bound<'_, PyAny>) -> PyResult<Subject<'a>> {
+fn extract_subject<'py>(target: &Bound<'py, PyAny>) -> PyResult<Subject<'py>> {
     // Try Body enum first
     if let Ok(body) = target.extract::<PyBody>() {
         return Ok(Subject::Body(body));
     }
     // Try Star
     if let Ok(star) = target.extract::<PyRef<'_, PyStar>>() {
-        // We need to clone to avoid lifetime issues
-        return Ok(Subject::Star(unsafe { &*(star.as_ptr() as *const PyStar) }));
+        return Ok(Subject::Star(star));
     }
     // Try Direction
     if let Ok(dir) = target.extract::<PyRef<'_, PyDirection>>() {
-        return Ok(Subject::Dir(unsafe {
-            &*(dir.as_ptr() as *const PyDirection)
-        }));
+        return Ok(Subject::Dir(dir));
     }
     Err(pyo3::exceptions::PyTypeError::new_err(
         "target must be a Body, Star, or Direction",
@@ -50,7 +47,7 @@ fn extract_subject<'a>(target: &'a Bound<'_, PyAny>) -> PyResult<Subject<'a>> {
 }
 
 fn make_window(start_mjd: f64, end_mjd: f64) -> PyResult<Interval<ModifiedJulianDate>> {
-    if start_mjd >= end_mjd {
+    if !start_mjd.is_finite() || !end_mjd.is_finite() || start_mjd >= end_mjd {
         return Err(invalid_period_error());
     }
     Ok(Interval::new(
