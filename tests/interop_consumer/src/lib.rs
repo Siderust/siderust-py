@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use siderust::time::{Period, Time, UTC};
 use siderust_py::interop::{
     direction_from_python, direction_to_python, ensure_bridge_protocol, observer_from_python,
     observer_to_python, DirectionParts, ObserverParts, BRIDGE_PROTOCOL_VERSION,
@@ -68,6 +69,20 @@ fn direction_from_parts(
     direction_to_python(py, &direction)
 }
 
+/// These explicit annotations prove that both bridges use Siderust's actual
+/// time types, rather than compiling separate Tempoch/Affn identities.
+#[pyfunction]
+fn period_round_trip<'py>(
+    start: &Bound<'py, PyAny>,
+    end: &Bound<'py, PyAny>,
+) -> PyResult<(Bound<'py, PyAny>, Bound<'py, PyAny>)> {
+    let start_time: Time<UTC> = tempoch_py::interop::datetime_to_time(start)?;
+    let end_time: Time<UTC> = tempoch_py::interop::datetime_to_time(end)?;
+    let period: Period<UTC> = Period::try_new(start_time, end_time)
+        .map_err(|error| pyo3::exceptions::PyValueError::new_err(error.to_string()))?;
+    tempoch_py::interop::period_to_datetimes(start.py(), period)
+}
+
 #[pymodule]
 fn _siderust_interop_consumer(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(bridge_protocol_version, m)?)?;
@@ -77,5 +92,6 @@ fn _siderust_interop_consumer(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(direction_parts, m)?)?;
     m.add_function(wrap_pyfunction!(direction_round_trip, m)?)?;
     m.add_function(wrap_pyfunction!(direction_from_parts, m)?)?;
+    m.add_function(wrap_pyfunction!(period_round_trip, m)?)?;
     Ok(())
 }

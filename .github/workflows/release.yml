@@ -91,6 +91,7 @@ jobs:
           manylinux: "2_28"
           args: >-
             --release
+            --locked
             --compatibility pypi
             --out dist
             -i python3.9
@@ -144,6 +145,7 @@ jobs:
           maturin-version: ${{ env.MATURIN_VERSION }}
           args: >-
             --release
+            --locked
             --compatibility pypi
             --out dist
             --find-interpreter
@@ -178,6 +180,7 @@ jobs:
           maturin-version: ${{ env.MATURIN_VERSION }}
           args: >-
             --release
+            --locked
             --compatibility pypi
             --out dist
             --find-interpreter
@@ -195,6 +198,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.14"
+
+      - uses: dtolnay/rust-toolchain@stable
+
       - name: Build sdist
         uses: PyO3/maturin-action@v1.51.0
         with:
@@ -202,11 +211,37 @@ jobs:
           maturin-version: ${{ env.MATURIN_VERSION }}
           args: --out dist
 
+      - name: Rebuild and test source distribution in isolation
+        run: bash scripts/check-sdist.sh dist/siderust-*.tar.gz
+
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: sdist
           path: dist/*.tar.gz
           if-no-files-found: error
+
+  validate-distributions:
+    name: Validate release distributions
+    needs:
+      - linux-wheels
+      - macos-wheels
+      - windows-wheels
+      - sdist
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.14"
+
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Check all wheel and sdist metadata
+        run: |
+          python -m pip install twine
+          python -m twine check --strict dist/*
 
   publish-pypi:
     name: Publish to PyPI
@@ -215,6 +250,7 @@ jobs:
       - macos-wheels
       - windows-wheels
       - sdist
+      - publish-crates
     runs-on: ubuntu-24.04
     environment:
       name: pypi
@@ -240,6 +276,7 @@ jobs:
       - macos-wheels
       - windows-wheels
       - sdist
+      - validate-distributions
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1

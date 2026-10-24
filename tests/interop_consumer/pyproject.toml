@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "siderust-interop-consumer"
 version = "0.1.0"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [tool.maturin]
 module-name = "_siderust_interop_consumer"

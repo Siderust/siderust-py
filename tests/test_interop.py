@@ -1,10 +1,29 @@
 """Contract tests against a separately compiled PyO3 consumer extension."""
 
+from datetime import datetime, timedelta, timezone
+
 import _siderust_interop_consumer as consumer
 import pytest
 import siderust._siderust as canonical_extension
 
 import siderust
+
+
+def test_both_bridges_share_siderust_time_and_period_types():
+    offset = timezone(timedelta(hours=5))
+    start = datetime(2024, 6, 21, 17, 34, 56, 123456, tzinfo=offset)
+    end = start + timedelta(hours=1)
+    actual_start, actual_end = consumer.period_round_trip(start, end)
+    for actual, expected in ((actual_start, start), (actual_end, end)):
+        assert actual.tzinfo is timezone.utc
+        assert abs(actual - expected) < timedelta(microseconds=50)
+
+
+def test_combined_bridge_rejects_naive_datetimes():
+    naive = datetime(2024, 6, 21, 12)
+    aware = naive.replace(tzinfo=timezone.utc)
+    with pytest.raises(ValueError, match="naive"):
+        consumer.period_round_trip(naive, aware)
 
 
 def test_bridge_protocol_matches_canonical_extension():

@@ -12,6 +12,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** upgrade the Rust dependency to `siderust` 0.15.0 with public Affn 0.12.1 and Tempoch 0.11.1 type identity.
 - **Breaking:** align PyO3 with 0.30.1; drop CPython 3.8 (PyO3 0.30 floor is 3.9+).
 - Synchronize the Rust crate and Python distribution versions at 0.5.0.
+- Exercise Siderust's typed UTC times and periods through the published
+  `tempoch-py` 0.5 bridge in the downstream consumer regression suite.
+- Validate isolated sdist rebuilds and installed package metadata before release;
+  publish to PyPI only after artifact validation and crates.io completion.
+
+### Fixed
+
+- Derive the packaged consumer's PyO3 requirement from Cargo metadata instead of
+  retaining an incompatible 0.29 requirement after the 0.30 upgrade.
+- Run the complete Python 3.9–3.14 test matrix on Ubuntu 24.04, which provides
+  setup-python binaries for Python 3.9.
 
 ## [0.4.0] - 2026-10-12
 
