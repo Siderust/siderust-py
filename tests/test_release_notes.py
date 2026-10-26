@@ -30,9 +30,21 @@ def invoke(tmp_path, tag="v1.2.3", log=CHANGELOG, citation='version: "1.2.3"\n')
     changelog.write_text(log, encoding="utf-8")
     cff.write_text(citation, encoding="utf-8")
     result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--tag", tag, "--changelog", str(changelog),
-         "--citation", str(cff), "--output", str(output)],
-        check=False, capture_output=True, text=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--tag",
+            tag,
+            "--changelog",
+            str(changelog),
+            "--citation",
+            str(cff),
+            "--output",
+            str(output),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
     )
     return result, output
 
