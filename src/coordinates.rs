@@ -1,4 +1,4 @@
-//! ICRS direction (RA/Dec) for Python.
+//! Explicit ICRS and Horizontal spherical directions for Python.
 //!
 //! Wraps `spherical::direction::ICRS` as a lightweight Python class for
 //! fixed-coordinate altitude/azimuth queries.
@@ -17,44 +17,44 @@ use crate::observer::PyObserver;
 ///
 /// Use for altitude/azimuth queries of fixed sky positions:
 ///
-/// >>> d = Direction(ra_deg=83.633, dec_deg=22.014)  # Betelgeuse-ish
+/// >>> d = direction.ICRS(ra_deg=83.633, dec_deg=22.014)  # Betelgeuse-ish
 /// >>> d.altitude_at(observer, 60000.0)
-#[pyclass(name = "Direction", module = "siderust", from_py_object)]
+#[pyclass(name = "ICRS", module = "siderust.direction", frozen, from_py_object)]
 #[derive(Clone, Copy)]
-pub struct PyDirection {
+pub struct PyIcrs {
     pub(crate) inner: direction::ICRS,
 }
 
-impl PyDirection {
+impl PyIcrs {
     pub fn from_inner(inner: direction::ICRS) -> Self {
         Self { inner }
     }
 }
 
 #[pyfunction]
-pub(crate) fn _bridge_direction_to_parts(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64)> {
-    let direction = value.cast::<PyDirection>()?.borrow();
+pub(crate) fn _bridge_icrs_to_parts(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64)> {
+    let direction = value.cast::<PyIcrs>()?.borrow();
     Ok((direction.ra_deg(), direction.dec_deg()))
 }
 
 #[pyfunction]
-pub(crate) fn _bridge_direction_from_parts(
+pub(crate) fn _bridge_icrs_from_parts(
     right_ascension_degrees: f64,
     declination_degrees: f64,
-) -> PyResult<PyDirection> {
-    PyDirection::new(right_ascension_degrees, declination_degrees)
+) -> PyResult<PyIcrs> {
+    PyIcrs::new(right_ascension_degrees, declination_degrees)
 }
 
 #[allow(clippy::wrong_self_convention)]
 #[pymethods]
-impl PyDirection {
+impl PyIcrs {
     /// Create an ICRS direction from right ascension and declination.
     ///
     /// Args:
     ///     ra_deg: Right ascension in degrees.
     ///     dec_deg: Declination in degrees.
     #[new]
-    fn new(ra_deg: f64, dec_deg: f64) -> PyResult<Self> {
+    pub(crate) fn new(ra_deg: f64, dec_deg: f64) -> PyResult<Self> {
         for (name, value) in [("ra_deg", ra_deg), ("dec_deg", dec_deg)] {
             if !value.is_finite() {
                 return Err(PyValueError::new_err(format!("{name} must be finite")));
@@ -95,29 +95,19 @@ impl PyDirection {
     }
 
     /// Angular separation to another direction in degrees (Vincenty formula).
-    fn angular_separation(&self, other: &PyDirection) -> f64 {
-        let lon1 = self.inner.azimuth.to::<Degree>().value().to_radians();
-        let lat1 = self.inner.polar.to::<Degree>().value().to_radians();
-        let lon2 = other.inner.azimuth.to::<Degree>().value().to_radians();
-        let lat2 = other.inner.polar.to::<Degree>().value().to_radians();
-        crate::position::vincenty_separation(lon1, lat1, lon2, lat2).to_degrees()
+    fn angular_separation(&self, other: &PyIcrs) -> f64 {
+        self.inner.angular_separation(&other.inner).value()
     }
 
-    /// Convert to unit cartesian vector (x, y, z).
+    /// Convert to a unit Cartesian vector in ICRS.
     fn to_cartesian(&self) -> (f64, f64, f64) {
-        let ra = self.inner.azimuth.to::<Degree>().value().to_radians();
-        let dec = self.inner.polar.to::<Degree>().value().to_radians();
-        let x = dec.cos() * ra.cos();
-        let y = dec.cos() * ra.sin();
-        let z = dec.sin();
-        (x, y, z)
+        let cart = self.inner.to_cartesian();
+        (cart.x(), cart.y(), cart.z())
     }
 
-    /// Dot product with another direction (unit vectors).
-    fn dot(&self, other: &PyDirection) -> f64 {
-        let (x1, y1, z1) = self.to_cartesian();
-        let (x2, y2, z2) = other.to_cartesian();
-        x1 * x2 + y1 * y2 + z1 * z2
+    /// Dot product with another ICRS direction.
+    fn dot(&self, other: &PyIcrs) -> f64 {
+        self.inner.to_cartesian().dot(&other.inner.to_cartesian())
     }
 
     /// Track this direction at a given Julian Date.
@@ -129,7 +119,7 @@ impl PyDirection {
     ///     jd: Julian Date.
     ///
     /// Returns:
-    ///     Target with this Direction at the given epoch.
+    ///     Target with this direction.ICRS at the given epoch.
     fn track(&self, jd: f64) -> crate::target::PyTarget {
         crate::target::track_direction(self, jd)
     }
@@ -158,7 +148,7 @@ impl PyDirection {
 
     fn __repr__(&self) -> String {
         format!(
-            "Direction(ra={:.4}°, dec={:.4}°)",
+            "siderust.direction.ICRS(ra_deg={:.4}, dec_deg={:.4})",
             self.ra_deg(),
             self.dec_deg()
         )
@@ -168,17 +158,17 @@ impl PyDirection {
         self.__repr__()
     }
 
-    fn __eq__(&self, other: &PyDirection) -> bool {
-        (self.ra_deg() - other.ra_deg()).abs() < 1e-10
-            && (self.dec_deg() - other.dec_deg()).abs() < 1e-10
+    fn __eq__(&self, other: &PyIcrs) -> bool {
+        self.inner.azimuth.value() == other.inner.azimuth.value()
+            && self.inner.polar.value() == other.inner.polar.value()
     }
 
     fn __hash__(&self) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
         let mut hasher = DefaultHasher::new();
-        self.inner.azimuth.value().to_bits().hash(&mut hasher);
-        self.inner.polar.value().to_bits().hash(&mut hasher);
+        hashable_float(self.inner.azimuth.value()).hash(&mut hasher);
+        hashable_float(self.inner.polar.value()).hash(&mut hasher);
         hasher.finish()
     }
 
@@ -194,38 +184,38 @@ impl PyDirection {
 /// North-clockwise convention (0° = North, increasing through East). Values
 /// are geometric (no atmospheric refraction).
 ///
-/// >>> h = HorizontalDirection(alt_deg=45.0, az_deg=180.0)  # due South at 45°
-#[pyclass(name = "HorizontalDirection", module = "siderust", from_py_object)]
+/// >>> h = direction.Horizontal(alt_deg=45.0, az_deg=180.0)  # due South at 45°
+#[pyclass(
+    name = "Horizontal",
+    module = "siderust.direction",
+    frozen,
+    from_py_object
+)]
 #[derive(Clone, Copy)]
-pub struct PyHorizontalDirection {
+pub struct PyHorizontal {
     pub(crate) inner: direction::Horizontal,
 }
 
-impl PyHorizontalDirection {
+impl PyHorizontal {
     pub fn from_inner(inner: direction::Horizontal) -> Self {
         Self { inner }
     }
 }
 
 #[pyfunction]
-pub(crate) fn _bridge_horizontal_direction_to_parts(
-    value: &Bound<'_, PyAny>,
-) -> PyResult<(f64, f64)> {
-    let direction = value.cast::<PyHorizontalDirection>()?.borrow();
+pub(crate) fn _bridge_horizontal_to_parts(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64)> {
+    let direction = value.cast::<PyHorizontal>()?.borrow();
     Ok((direction.alt_deg(), direction.az_deg()))
 }
 
 #[pyfunction]
-pub(crate) fn _bridge_horizontal_direction_from_parts(
-    alt_deg: f64,
-    az_deg: f64,
-) -> PyResult<PyHorizontalDirection> {
-    PyHorizontalDirection::new(alt_deg, az_deg)
+pub(crate) fn _bridge_horizontal_from_parts(alt_deg: f64, az_deg: f64) -> PyResult<PyHorizontal> {
+    PyHorizontal::new(alt_deg, az_deg)
 }
 
 #[allow(clippy::wrong_self_convention)]
 #[pymethods]
-impl PyHorizontalDirection {
+impl PyHorizontal {
     /// Create a horizontal direction from altitude and azimuth.
     ///
     /// Args:
@@ -284,7 +274,7 @@ impl PyHorizontalDirection {
 
     fn __repr__(&self) -> String {
         format!(
-            "HorizontalDirection(alt={:.4}°, az={:.4}°)",
+            "siderust.direction.Horizontal(alt_deg={:.4}, az_deg={:.4})",
             self.alt_deg(),
             self.az_deg()
         )
@@ -294,22 +284,31 @@ impl PyHorizontalDirection {
         self.__repr__()
     }
 
-    fn __eq__(&self, other: &PyHorizontalDirection) -> bool {
-        (self.alt_deg() - other.alt_deg()).abs() < 1e-10
-            && (self.az_deg() - other.az_deg()).abs() < 1e-10
+    fn __eq__(&self, other: &PyHorizontal) -> bool {
+        self.inner.polar.value() == other.inner.polar.value()
+            && self.inner.azimuth.value() == other.inner.azimuth.value()
     }
 
     fn __hash__(&self) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
         let mut hasher = DefaultHasher::new();
-        self.inner.polar.value().to_bits().hash(&mut hasher);
-        self.inner.azimuth.value().to_bits().hash(&mut hasher);
+        hashable_float(self.inner.polar.value()).hash(&mut hasher);
+        hashable_float(self.inner.azimuth.value()).hash(&mut hasher);
         hasher.finish()
     }
 
     fn __reduce__(&self, py: Python<'_>) -> PyResult<(Py<PyAny>, (f64, f64))> {
         let cls = py.get_type::<Self>().into_any().unbind();
         Ok((cls, (self.alt_deg(), self.az_deg())))
+    }
+}
+
+// Python considers signed zeros equal, so their hashes must also agree.
+fn hashable_float(value: f64) -> u64 {
+    if value == 0.0 {
+        0
+    } else {
+        value.to_bits()
     }
 }

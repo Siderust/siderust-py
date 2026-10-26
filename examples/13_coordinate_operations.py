@@ -12,7 +12,8 @@ Run with: python examples/13_coordinate_operations.py
 
 import math
 
-from siderust import Direction, SphericalPosition
+from siderust import SphericalPosition
+from siderust.direction import ICRS
 
 
 def main():
@@ -24,8 +25,8 @@ def main():
     print("1. ANGULAR SEPARATION (DIRECTIONS)")
     print("-----------------------------------")
 
-    polaris = Direction(ra_deg=37.9546, dec_deg=89.2641)
-    sirius = Direction(ra_deg=101.2872, dec_deg=-16.7161)
+    polaris = ICRS(ra_deg=37.9546, dec_deg=89.2641)
+    sirius = ICRS(ra_deg=101.2872, dec_deg=-16.7161)
 
     sep = polaris.angular_separation(sirius)
     print(f"Polaris  (RA={polaris.ra_deg:.4f}°, Dec={polaris.dec_deg:.4f}°)")
@@ -33,8 +34,8 @@ def main():
     print(f"  Angular separation = {sep:.4f}°\n")
 
     # Nearby pair
-    star_a = Direction(ra_deg=10.0, dec_deg=30.0)
-    star_b = Direction(ra_deg=10.5, dec_deg=30.5)
+    star_a = ICRS(ra_deg=10.0, dec_deg=30.0)
+    star_b = ICRS(ra_deg=10.5, dec_deg=30.5)
     close_sep = star_a.angular_separation(star_b)
     print("Nearby pair (0.5° apart in both RA and Dec):")
     print(f"  Angular separation = {close_sep:.4f}°\n")
@@ -71,12 +72,12 @@ def main():
     print("3. DOT PRODUCT")
     print("--------------")
 
-    north_pole = Direction(ra_deg=0.0, dec_deg=90.0)
-    equatorial = Direction(ra_deg=0.0, dec_deg=0.0)
+    north_pole = ICRS(ra_deg=0.0, dec_deg=90.0)
+    equatorial = ICRS(ra_deg=0.0, dec_deg=0.0)
 
     print(f"dot(North Pole, Equatorial point)   = {north_pole.dot(equatorial):.6f}  (must be  0)")
 
-    anti_polaris = Direction(
+    anti_polaris = ICRS(
         ra_deg=polaris.ra_deg + 180.0,
         dec_deg=-polaris.dec_deg,
     )

@@ -30,7 +30,7 @@ package is imported as `siderust`.
 - **Moon phase geometry and events**
 - **Targets and proper motion** for epoch-aware stellar tracking
 - **Orbit, comet, and runtime ephemeris** bindings
-- **PyO3 interoperability** for exchanging canonical `Observer` and `Direction`
+- **PyO3 interoperability** for exchanging canonical `Observer`, `direction.ICRS` and `direction.Horizontal`
   objects across independently compiled Rust extensions
 
 ## Installation
@@ -93,7 +93,7 @@ print(f"Vega altitude: {altitude:.2f}°")
 | **Observers** | `Observer`, predefined observatories |
 | **Solar system** | `Body`, `Orbit`, `Comet`, `RuntimeEphemeris` |
 | **Stars and targets** | `Star`, `Target`, `ProperMotion`, `apply_proper_motion()` |
-| **Coordinates** | `Direction`, `Position`, `SphericalPosition` |
+| **Coordinates** | `direction.ICRS`, `direction.Horizontal`, `Position`, `SphericalPosition` |
 | **Altitude / azimuth** | `altitude_at()`, `azimuth_at()` |
 | **Visibility** | `above_threshold()`, `below_threshold()` |
 | **Events** | `crossings()`, `culminations()`, `intersect_periods()` |
@@ -182,7 +182,23 @@ transits = culminations(
 ```
 
 `target` arguments accepted by the common observing functions can be a
-`Body`, `Star`, or `Direction`.
+`Body`, `Star`, or `direction.ICRS`.
+
+## Explicit directions (0.6 migration)
+
+```python
+from siderust import direction
+from siderust.direction import ICRS, Horizontal
+
+icrs = direction.ICRS(ra_deg=83.633, dec_deg=22.014)
+horizontal = direction.Horizontal(alt_deg=45.0, az_deg=180.0)
+assert type(icrs) is ICRS
+assert type(horizontal) is Horizontal
+```
+
+`Direction` → `direction.ICRS`; `HorizontalDirection` → `direction.Horizontal`.
+There are no legacy aliases. See the [direction API](doc/direction.md) for
+frame conventions, operations, serialization and migration details.
 
 ## Examples
 
@@ -205,7 +221,7 @@ The repository includes runnable examples covering the larger API surface:
 ## Rust / PyO3 interoperability
 
 The project also builds an `rlib` so downstream Rust/PyO3 extensions can
-exchange canonical Python `siderust.Observer` and `siderust.Direction`
+exchange canonical Python `siderust.Observer` and both `siderust.direction.ICRS` / `Horizontal`
 objects without relying on duplicate PyO3 class registrations.
 
 Add the published interoperability crate to a Rust extension:

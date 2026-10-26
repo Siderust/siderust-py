@@ -154,14 +154,19 @@ EOF
 
 cat > "$tmp_dir/consumer/src/lib.rs" <<'EOF'
 use siderust_py::interop::{
-    direction_from_python, direction_to_python, observer_from_python, observer_to_python,
+    icrs_from_python, icrs_to_python, horizontal_from_python, horizontal_to_python,
+    observer_from_python, observer_to_python, IcrsParts, HorizontalParts,
 };
 
 pub fn assert_public_interop_api() {
     let _ = observer_from_python;
     let _ = observer_to_python;
-    let _ = direction_from_python;
-    let _ = direction_to_python;
+    let _ = icrs_from_python;
+    let _ = icrs_to_python;
+    let _ = horizontal_from_python;
+    let _ = horizontal_to_python;
+    let _ = core::mem::size_of::<IcrsParts>();
+    let _ = core::mem::size_of::<HorizontalParts>();
 }
 EOF
 

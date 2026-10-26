@@ -9,20 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Python `HorizontalDirection` wrapping Siderust `direction::Horizontal`
-  (`alt_deg`, `az_deg`): altitude above the geometric horizon, North-clockwise
-  azimuth through East, no refraction.
-- Bridge protocol 2 hooks `_bridge_horizontal_direction_from_parts` /
-  `_bridge_horizontal_direction_to_parts` and Rust interop helpers
-  `horizontal_direction_from_python` / `horizontal_direction_to_python` with
-  `HorizontalDirectionParts`.
+- Real importable `siderust.direction` module with canonical `ICRS` and
+  `Horizontal` classes backed by Rust spherical directions. Horizontal contains
+  geometric altitude and North-clockwise azimuth through East, without observer,
+  epoch, refraction or object identity.
 
 ### Changed
 
-- **Breaking:** bump `_bridge_protocol_version` from 1 to 2. Protocol 2 adds
-  horizontal-direction bridge hooks while keeping the protocol-1 Observer and
-  ICRS Direction hooks unchanged. Downstream extensions must depend on
-  siderust-py 0.6 and install a matching Python package.
+- **Breaking:** `Direction` → `direction.ICRS` and the provisional
+  `HorizontalDirection` → `direction.Horizontal`. Import via
+  `from siderust import direction` or `from siderust.direction import ICRS, Horizontal`.
+  No legacy aliases remain. Target, Star tracking, observing queries and proper
+  motion use ICRS explicitly; horizontal directions are rejected by these APIs.
+- **Breaking:** bridge protocol 2 uses `IcrsParts`, `icrs_{from,to}_python`,
+  `icrs_parts_from_python`, `HorizontalParts`, `horizontal_{from,to}_python`
+  and `horizontal_parts_from_python`. Private hooks use `_bridge_icrs_*` and
+  `_bridge_horizontal_*`. Observer hooks are unchanged. Consumers must rebuild
+  against siderust-py 0.6 and install a matching protocol-2 Python package.
+- Directions are immutable values with exact canonical-coordinate equality.
+  Hashing agrees with equality, including signed zero; use angular separation
+  and an explicit tolerance for approximate comparisons.
+- ICRS vector conversion, dot product and separation delegate to the Rust core.
+- Reject non-finite ProperMotion rates and propagation dates; validate propagated
+  directions before exposing them. Reject non-finite custom Star coordinates
+  so tracking cannot produce invalid ICRS values. Document the core's J2000 catalog
+  approximation for proper-motion propagation.
 
 ## [0.5.1] - 2026-10-24
 

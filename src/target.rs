@@ -1,7 +1,7 @@
 //! Target and ProperMotion types for Python.
 //!
 //! Provides:
-//! - `Target`: timestamped coordinate snapshot wrapping a Position or Direction
+//! - `Target`: timestamped coordinate snapshot wrapping a Position or direction.ICRS
 //! - `ProperMotion`: stellar proper motion in RA/Dec
 //! - `apply_proper_motion()`: free function to propagate a direction
 
@@ -9,13 +9,12 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use siderust::astro::proper_motion;
 use siderust::bodies::solar_system;
-use siderust::coordinates::spherical::direction;
 use siderust::qtty::*;
 use siderust::targets::Trackable;
 use siderust::time::JulianDate;
 
 use crate::bodies::PyBody;
-use crate::coordinates::PyDirection;
+use crate::coordinates::PyIcrs;
 use crate::position::{PyPosition, CENTER_BARY, CENTER_GEO, FRAME_ECL, UNIT_AU, UNIT_KM};
 use crate::star::PyStar;
 
@@ -51,7 +50,15 @@ impl PyProperMotion {
     ///                    If False, pm_ra is the true RA angular rate µα.
     #[new]
     #[pyo3(signature = (pm_ra_mas_yr, pm_dec_mas_yr, mu_alpha_star = true))]
-    fn new(pm_ra_mas_yr: f64, pm_dec_mas_yr: f64, mu_alpha_star: bool) -> Self {
+    fn new(pm_ra_mas_yr: f64, pm_dec_mas_yr: f64, mu_alpha_star: bool) -> PyResult<Self> {
+        for (name, value) in [
+            ("pm_ra_mas_yr", pm_ra_mas_yr),
+            ("pm_dec_mas_yr", pm_dec_mas_yr),
+        ] {
+            if !value.is_finite() {
+                return Err(PyValueError::new_err(format!("{name} must be finite")));
+            }
+        }
         type MasPerYear = Per<MilliArcsecond, Year>;
         type MasPerYearQ = Quantity<MasPerYear>;
 
@@ -67,12 +74,12 @@ impl PyProperMotion {
             )
         };
 
-        Self {
+        Ok(Self {
             inner,
             ra_mas: pm_ra_mas_yr,
             dec_mas: pm_dec_mas_yr,
             mu_alpha_star,
-        }
+        })
     }
 
     /// RA proper motion in mas/yr.
@@ -114,7 +121,7 @@ impl PyProperMotion {
 #[derive(Clone)]
 enum TargetInner {
     Position(PyPosition),
-    Direction(PyDirection),
+    Icrs(PyIcrs),
 }
 
 /// A timestamped coordinate snapshot.
@@ -137,7 +144,7 @@ impl PyTarget {
     /// Create a Target from a Position and a Julian Date.
     ///
     /// Args:
-    ///     position: A Position or Direction object.
+    ///     position: A Position or direction.ICRS object.
     ///     jd: Julian Date of the snapshot.
     #[new]
     fn new(position: &Bound<'_, PyAny>, jd: f64) -> PyResult<Self> {
@@ -146,14 +153,14 @@ impl PyTarget {
                 inner: TargetInner::Position(pos.borrow().clone()),
                 time: jd,
             })
-        } else if let Ok(dir) = position.extract::<PyDirection>() {
+        } else if let Ok(dir) = position.extract::<PyIcrs>() {
             Ok(Self {
-                inner: TargetInner::Direction(dir),
+                inner: TargetInner::Icrs(dir),
                 time: jd,
             })
         } else {
             Err(PyValueError::new_err(
-                "Target expects a Position or Direction object",
+                "Target expects a Position or direction.ICRS object",
             ))
         }
     }
@@ -164,24 +171,24 @@ impl PyTarget {
         self.time
     }
 
-    /// The coordinate as a Position (raises ValueError if this is a Direction target).
+    /// The coordinate as a Position (raises ValueError if this is a direction.ICRS target).
     #[getter]
     fn position(&self) -> PyResult<PyPosition> {
         match &self.inner {
             TargetInner::Position(p) => Ok(p.clone()),
-            TargetInner::Direction(_) => Err(PyValueError::new_err(
-                "This target holds a Direction, not a Position. Use .direction instead.",
+            TargetInner::Icrs(_) => Err(PyValueError::new_err(
+                "This target holds a direction.ICRS, not a Position. Use .direction instead.",
             )),
         }
     }
 
-    /// The coordinate as a Direction (raises ValueError if this is a Position target).
+    /// The coordinate as a direction.ICRS (raises ValueError if this is a Position target).
     #[getter]
-    fn direction(&self) -> PyResult<PyDirection> {
+    fn direction(&self) -> PyResult<PyIcrs> {
         match &self.inner {
-            TargetInner::Direction(d) => Ok(*d),
+            TargetInner::Icrs(d) => Ok(*d),
             TargetInner::Position(_) => Err(PyValueError::new_err(
-                "This target holds a Position, not a Direction. Use .position instead.",
+                "This target holds a Position, not a direction.ICRS. Use .position instead.",
             )),
         }
     }
@@ -192,10 +199,10 @@ impl PyTarget {
         matches!(self.inner, TargetInner::Position(_))
     }
 
-    /// Whether this target holds a Direction.
+    /// Whether this target holds a direction.ICRS.
     #[getter]
     fn is_direction(&self) -> bool {
-        matches!(self.inner, TargetInner::Direction(_))
+        matches!(self.inner, TargetInner::Icrs(_))
     }
 
     /// Update the target with a new position/direction and time.
@@ -204,13 +211,13 @@ impl PyTarget {
             self.inner = TargetInner::Position(pos.borrow().clone());
             self.time = jd;
             Ok(())
-        } else if let Ok(dir) = position.extract::<PyDirection>() {
-            self.inner = TargetInner::Direction(dir);
+        } else if let Ok(dir) = position.extract::<PyIcrs>() {
+            self.inner = TargetInner::Icrs(dir);
             self.time = jd;
             Ok(())
         } else {
             Err(PyValueError::new_err(
-                "update() expects a Position or Direction object",
+                "update() expects a Position or direction.ICRS object",
             ))
         }
     }
@@ -221,8 +228,8 @@ impl PyTarget {
                 "Target(position=Position({:.6}, {:.6}, {:.6}, {}, {}, {}), jd={:.1})",
                 p.x, p.y, p.z, p.frame, p.center, p.unit, self.time
             ),
-            TargetInner::Direction(d) => format!(
-                "Target(direction=Direction(ra={:.4}°, dec={:.4}°), jd={:.1})",
+            TargetInner::Icrs(d) => format!(
+                "Target(direction=direction.ICRS(ra={:.4}°, dec={:.4}°), jd={:.1})",
                 d.inner.ra(),
                 d.inner.dec(),
                 self.time
@@ -232,7 +239,7 @@ impl PyTarget {
 }
 
 // =============================================================================
-// track() methods — added to Body, Star, Direction
+// track() methods — added to Body, Star, direction.ICRS
 // =============================================================================
 
 /// Track a solar system body at a given Julian Date.
@@ -303,16 +310,16 @@ fn track_body_vsop87(body: &PyBody, jd: JulianDate) -> (f64, f64, f64) {
 pub(crate) fn track_star(star: &PyStar, jd: f64) -> PyTarget {
     let dir = star.inner.track(JulianDate::new(jd));
     PyTarget {
-        inner: TargetInner::Direction(PyDirection { inner: dir }),
+        inner: TargetInner::Icrs(PyIcrs { inner: dir }),
         time: jd,
     }
 }
 
 /// Track a direction at a given Julian Date — returns self (time-invariant).
-pub(crate) fn track_direction(dir: &PyDirection, jd: f64) -> PyTarget {
+pub(crate) fn track_direction(dir: &PyIcrs, jd: f64) -> PyTarget {
     let tracked = dir.inner.track(JulianDate::new(jd));
     PyTarget {
-        inner: TargetInner::Direction(PyDirection { inner: tracked }),
+        inner: TargetInner::Icrs(PyIcrs { inner: tracked }),
         time: jd,
     }
 }
@@ -329,18 +336,25 @@ pub(crate) fn track_direction(dir: &PyDirection, jd: f64) -> PyTarget {
 ///     jd: Target Julian Date.
 ///
 /// Returns:
-///     New Direction with proper motion applied.
+///     New direction.ICRS with proper motion applied.
+///
+/// Uses the core's linear J2000 equatorial catalog approximation, identifying
+/// ICRS catalog angles with mean-J2000 angles. No frame bias, perspective
+/// acceleration, parallax or radial velocity is modeled.
 #[pyfunction]
-pub fn apply_proper_motion(
-    direction: &PyDirection,
-    pm: &PyProperMotion,
-    jd: f64,
-) -> PyResult<PyDirection> {
+pub fn apply_proper_motion(direction: &PyIcrs, pm: &PyProperMotion, jd: f64) -> PyResult<PyIcrs> {
     use siderust::coordinates::{
         centers::Geocentric, frames::EquatorialMeanJ2000, spherical::Position,
     };
 
-    // Convert direction to a spherical position for proper motion application.
+    if !jd.is_finite() {
+        return Err(PyValueError::new_err("jd must be finite"));
+    }
+
+    // Retain the core's existing J2000 equatorial catalog approximation:
+    // ICRS catalog angles are identified with mean-J2000 angles here.
+    // This is not a frame-bias transformation or full space-motion model.
+    // See doc/direction.md for the scientific scope of this adapter.
     let pos = Position::<Geocentric, EquatorialMeanJ2000, LightYear>::new(
         direction.inner.azimuth,
         direction.inner.polar,
@@ -351,7 +365,5 @@ pub fn apply_proper_motion(
         proper_motion::set_proper_motion_since_j2000(pos, pm.inner.clone(), JulianDate::new(jd))
             .map_err(|e| PyValueError::new_err(e.to_string()))?;
 
-    Ok(PyDirection {
-        inner: direction::ICRS::new(moved.ra(), moved.dec()),
-    })
+    PyIcrs::new(moved.ra().value(), moved.dec().value())
 }

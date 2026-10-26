@@ -12,8 +12,6 @@ from siderust import (
     CrossingEvent,
     CulminationEvent,
     CulminationKind,
-    Direction,
-    HorizontalDirection,
     MoonPhaseGeometry,
     MoonPhaseLabel,
     Observer,
@@ -29,6 +27,7 @@ from siderust import (
     find_moon_phases,
     moon_phase,
 )
+from siderust.direction import ICRS, Horizontal
 
 
 class TestModuleExports:
@@ -44,8 +43,7 @@ class TestModuleExports:
             "Observer",
             "Body",
             "Star",
-            "Direction",
-            "HorizontalDirection",
+            "direction",
             "CrossingEvent",
             "CulminationEvent",
             "CrossingDirection",
@@ -211,11 +209,11 @@ class TestStar:
         assert a == b
 
 
-class TestDirection:
-    """Direction (ICRS) type tests."""
+class TestIcrs:
+    """ICRS (RA/Dec) type tests."""
 
     def test_creation(self):
-        d = Direction(ra_deg=180.0, dec_deg=45.0)
+        d = ICRS(ra_deg=180.0, dec_deg=45.0)
         assert abs(d.ra_deg - 180.0) < 0.01
         assert abs(d.dec_deg - 45.0) < 0.01
 
@@ -225,45 +223,45 @@ class TestDirection:
         parts = {"ra_deg": 0.0, "dec_deg": 0.0}
         parts[field] = value
         with pytest.raises(ValueError, match=rf"{field} must be finite"):
-            Direction(**parts)
+            ICRS(**parts)
 
     def test_altitude_at(self):
         obs = Observer.roque_de_los_muchachos()
-        d = Direction(ra_deg=0.0, dec_deg=90.0)  # North celestial pole
+        d = ICRS(ra_deg=0.0, dec_deg=90.0)  # North celestial pole
         alt = d.altitude_at(obs, 60000.0)
         # NCP altitude ≈ observer latitude
         assert abs(alt - obs.lat_deg) < 1.0
 
     def test_repr(self):
-        d = Direction(ra_deg=10.0, dec_deg=20.0)
+        d = ICRS(ra_deg=10.0, dec_deg=20.0)
         r = repr(d)
-        assert "Direction" in r
+        assert "ICRS" in r
         assert "10" in r
 
     def test_equality(self):
-        a = Direction(ra_deg=10.0, dec_deg=20.0)
-        b = Direction(ra_deg=10.0, dec_deg=20.0)
+        a = ICRS(ra_deg=10.0, dec_deg=20.0)
+        b = ICRS(ra_deg=10.0, dec_deg=20.0)
         assert a == b
 
     def test_hash(self):
-        a = Direction(ra_deg=10.0, dec_deg=20.0)
-        b = Direction(ra_deg=10.0, dec_deg=20.0)
+        a = ICRS(ra_deg=10.0, dec_deg=20.0)
+        b = ICRS(ra_deg=10.0, dec_deg=20.0)
         assert hash(a) == hash(b)
 
     def test_pickle(self):
         import pickle
 
-        d = Direction(ra_deg=100.0, dec_deg=-30.0)
+        d = ICRS(ra_deg=100.0, dec_deg=-30.0)
         d2 = pickle.loads(pickle.dumps(d))
         assert abs(d.ra_deg - d2.ra_deg) < 1e-10
         assert abs(d.dec_deg - d2.dec_deg) < 1e-10
 
 
-class TestHorizontalDirection:
-    """HorizontalDirection (alt/az) type tests."""
+class TestHorizontal:
+    """Horizontal (alt/az) type tests."""
 
     def test_creation(self):
-        h = HorizontalDirection(alt_deg=45.0, az_deg=180.0)
+        h = Horizontal(alt_deg=45.0, az_deg=180.0)
         assert abs(h.alt_deg - 45.0) < 1e-10
         assert abs(h.az_deg - 180.0) < 1e-10
 
@@ -273,31 +271,31 @@ class TestHorizontalDirection:
         parts = {"alt_deg": 0.0, "az_deg": 0.0}
         parts[field] = value
         with pytest.raises(ValueError, match=rf"{field} must be finite"):
-            HorizontalDirection(**parts)
+            Horizontal(**parts)
 
     def test_altitude_is_canonicalized(self):
         # 100° altitude folds to 80° with azimuth shifted by 180°.
-        h = HorizontalDirection(alt_deg=100.0, az_deg=10.0)
+        h = Horizontal(alt_deg=100.0, az_deg=10.0)
         assert abs(h.alt_deg - 80.0) < 1e-10
         assert abs(h.az_deg - 190.0) < 1e-10
 
     def test_repr(self):
-        h = HorizontalDirection(alt_deg=30.0, az_deg=90.0)
+        h = Horizontal(alt_deg=30.0, az_deg=90.0)
         r = repr(h)
-        assert "HorizontalDirection" in r
+        assert "Horizontal" in r
         assert "30" in r
         assert "90" in r
 
     def test_equality_and_hash(self):
-        a = HorizontalDirection(alt_deg=10.0, az_deg=20.0)
-        b = HorizontalDirection(alt_deg=10.0, az_deg=20.0)
+        a = Horizontal(alt_deg=10.0, az_deg=20.0)
+        b = Horizontal(alt_deg=10.0, az_deg=20.0)
         assert a == b
         assert hash(a) == hash(b)
 
     def test_pickle(self):
         import pickle
 
-        h = HorizontalDirection(alt_deg=12.5, az_deg=275.0)
+        h = Horizontal(alt_deg=12.5, az_deg=275.0)
         h2 = pickle.loads(pickle.dumps(h))
         assert abs(h.alt_deg - h2.alt_deg) < 1e-10
         assert abs(h.az_deg - h2.az_deg) < 1e-10
@@ -320,7 +318,7 @@ class TestAltitudeQueries:
 
     def test_altitude_at_direction(self):
         obs = Observer.roque_de_los_muchachos()
-        d = Direction(ra_deg=0.0, dec_deg=45.0)
+        d = ICRS(ra_deg=0.0, dec_deg=45.0)
         alt = altitude_at(d, obs, 60000.0)
         assert isinstance(alt, float)
 
@@ -344,7 +342,7 @@ def query_target(request):
         return Star.catalog("Sirius")
     if request.param == "custom-star":
         return Star.from_ra_dec("Galactic centre", 266.41683, -29.00781)
-    return Direction(266.41683, -29.00781)
+    return ICRS(266.41683, -29.00781)
 
 
 @pytest.fixture
@@ -466,7 +464,7 @@ class TestSafeQueryDispatch:
         ],
     )
     def test_invalid_target(self, query_observer, target, function, args):
-        with pytest.raises(TypeError, match="target must be a Body, Star, or Direction"):
+        with pytest.raises(TypeError, match="target must be a Body, Star, or direction.ICRS"):
             function(target, query_observer, *args)
 
     @pytest.mark.parametrize(

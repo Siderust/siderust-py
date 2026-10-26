@@ -20,7 +20,6 @@ import tempfile
 from siderust import (
     Body,
     Comet,
-    Direction,
     Observer,
     Orbit,
     Position,
@@ -28,6 +27,7 @@ from siderust import (
     SphericalPosition,
     Star,
 )
+from siderust.direction import ICRS
 
 J2000 = 2451545.0
 
@@ -96,12 +96,12 @@ def section_coordinates():
     recovered_sph = roundtrip_pickle(helio_sph)
     print(f"Pickle roundtrip: lon={recovered_sph.lon_deg:.4f}°\n")
 
-    # Direction
-    direction = Direction(ra_deg=120.0, dec_deg=22.5)
+    # ICRS
+    direction = ICRS(ra_deg=120.0, dec_deg=22.5)
     dir_dict = direction.to_dict()
-    print(f"Direction dict: {json.dumps(dir_dict)}")
+    print(f"ICRS dict: {json.dumps(dir_dict)}")
 
-    recovered_dir = Direction.from_dict(roundtrip_json(dir_dict))
+    recovered_dir = ICRS.from_dict(roundtrip_json(dir_dict))
     print(f"Roundtrip check: RA={recovered_dir.ra_deg:.4f}°\n")
 
     # Observer
@@ -202,7 +202,7 @@ def section_targets():
     print(json.dumps(star_data, indent=2))
 
     recovered = json.loads(json.dumps(star_data))
-    recovered_dir = Direction.from_dict(recovered["direction"])
+    recovered_dir = ICRS.from_dict(recovered["direction"])
     print(f"Roundtrip check: {recovered['star']} target, RA={recovered_dir.ra_deg:.4f}°\n")
 
 
