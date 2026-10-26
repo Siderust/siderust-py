@@ -1,8 +1,10 @@
 use pyo3::prelude::*;
 use siderust::time::{Period, Time, UTC};
 use siderust_py::interop::{
-    direction_from_python, direction_to_python, ensure_bridge_protocol, observer_from_python,
-    observer_to_python, DirectionParts, ObserverParts, BRIDGE_PROTOCOL_VERSION,
+    direction_from_python, direction_to_python, ensure_bridge_protocol,
+    horizontal_direction_from_python, horizontal_direction_to_python, observer_from_python,
+    observer_to_python, DirectionParts, HorizontalDirectionParts, ObserverParts,
+    BRIDGE_PROTOCOL_VERSION,
 };
 
 #[pyfunction]
@@ -69,6 +71,32 @@ fn direction_from_parts(
     direction_to_python(py, &direction)
 }
 
+#[pyfunction]
+fn horizontal_direction_parts(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64)> {
+    let direction = horizontal_direction_from_python(value)?;
+    let parts = HorizontalDirectionParts::from(&direction);
+    Ok((parts.altitude_degrees, parts.azimuth_degrees))
+}
+
+#[pyfunction]
+fn horizontal_direction_round_trip(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+    horizontal_direction_to_python(py, &horizontal_direction_from_python(value)?)
+}
+
+#[pyfunction]
+fn horizontal_direction_from_parts(
+    py: Python<'_>,
+    altitude_degrees: f64,
+    azimuth_degrees: f64,
+) -> PyResult<Py<PyAny>> {
+    let direction = HorizontalDirectionParts {
+        altitude_degrees,
+        azimuth_degrees,
+    }
+    .into_direction();
+    horizontal_direction_to_python(py, &direction)
+}
+
 /// These explicit annotations prove that both bridges use Siderust's actual
 /// time types, rather than compiling separate Tempoch/Affn identities.
 #[pyfunction]
@@ -92,6 +120,9 @@ fn _siderust_interop_consumer(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(direction_parts, m)?)?;
     m.add_function(wrap_pyfunction!(direction_round_trip, m)?)?;
     m.add_function(wrap_pyfunction!(direction_from_parts, m)?)?;
+    m.add_function(wrap_pyfunction!(horizontal_direction_parts, m)?)?;
+    m.add_function(wrap_pyfunction!(horizontal_direction_round_trip, m)?)?;
+    m.add_function(wrap_pyfunction!(horizontal_direction_from_parts, m)?)?;
     m.add_function(wrap_pyfunction!(period_round_trip, m)?)?;
     Ok(())
 }

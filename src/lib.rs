@@ -21,7 +21,7 @@ mod star;
 mod target;
 
 use bodies::PyBody;
-use coordinates::PyDirection;
+use coordinates::{PyDirection, PyHorizontalDirection};
 use ephemeris::PyRuntimeEphemeris;
 use events::{PyCrossingDirection, PyCrossingEvent, PyCulminationEvent, PyCulminationKind};
 use observer::PyObserver;
@@ -50,6 +50,7 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyBody>()?;
     m.add_class::<PyStar>()?;
     m.add_class::<PyDirection>()?;
+    m.add_class::<PyHorizontalDirection>()?;
     m.add_class::<PyPosition>()?;
     m.add_class::<PySphericalPosition>()?;
 
@@ -93,6 +94,14 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         coordinates::_bridge_direction_from_parts,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        coordinates::_bridge_horizontal_direction_to_parts,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        coordinates::_bridge_horizontal_direction_from_parts,
         m
     )?)?;
     m.add("_bridge_protocol_version", interop::BRIDGE_PROTOCOL_VERSION)?;

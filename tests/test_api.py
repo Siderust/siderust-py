@@ -13,6 +13,7 @@ from siderust import (
     CulminationEvent,
     CulminationKind,
     Direction,
+    HorizontalDirection,
     MoonPhaseGeometry,
     MoonPhaseLabel,
     Observer,
@@ -44,6 +45,7 @@ class TestModuleExports:
             "Body",
             "Star",
             "Direction",
+            "HorizontalDirection",
             "CrossingEvent",
             "CulminationEvent",
             "CrossingDirection",
@@ -255,6 +257,50 @@ class TestDirection:
         d2 = pickle.loads(pickle.dumps(d))
         assert abs(d.ra_deg - d2.ra_deg) < 1e-10
         assert abs(d.dec_deg - d2.dec_deg) < 1e-10
+
+
+class TestHorizontalDirection:
+    """HorizontalDirection (alt/az) type tests."""
+
+    def test_creation(self):
+        h = HorizontalDirection(alt_deg=45.0, az_deg=180.0)
+        assert abs(h.alt_deg - 45.0) < 1e-10
+        assert abs(h.az_deg - 180.0) < 1e-10
+
+    @pytest.mark.parametrize("field", ["alt_deg", "az_deg"])
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+    def test_non_finite_values_are_rejected(self, field, value):
+        parts = {"alt_deg": 0.0, "az_deg": 0.0}
+        parts[field] = value
+        with pytest.raises(ValueError, match=rf"{field} must be finite"):
+            HorizontalDirection(**parts)
+
+    def test_altitude_is_canonicalized(self):
+        # 100° altitude folds to 80° with azimuth shifted by 180°.
+        h = HorizontalDirection(alt_deg=100.0, az_deg=10.0)
+        assert abs(h.alt_deg - 80.0) < 1e-10
+        assert abs(h.az_deg - 190.0) < 1e-10
+
+    def test_repr(self):
+        h = HorizontalDirection(alt_deg=30.0, az_deg=90.0)
+        r = repr(h)
+        assert "HorizontalDirection" in r
+        assert "30" in r
+        assert "90" in r
+
+    def test_equality_and_hash(self):
+        a = HorizontalDirection(alt_deg=10.0, az_deg=20.0)
+        b = HorizontalDirection(alt_deg=10.0, az_deg=20.0)
+        assert a == b
+        assert hash(a) == hash(b)
+
+    def test_pickle(self):
+        import pickle
+
+        h = HorizontalDirection(alt_deg=12.5, az_deg=275.0)
+        h2 = pickle.loads(pickle.dumps(h))
+        assert abs(h.alt_deg - h2.alt_deg) < 1e-10
+        assert abs(h.az_deg - h2.az_deg) < 1e-10
 
 
 class TestAltitudeQueries:

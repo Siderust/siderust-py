@@ -2,11 +2,12 @@
 //!
 //! PyO3 classes are local to the extension module that registers them. A
 //! downstream extension must therefore not compile its own copy of
-//! `PyObserver` or `PyDirection` and expect Python type identity to match. This
-//! module imports the installed canonical extension and asks it to extract or
-//! construct its own classes. Only primitive scalar values (`f64` payload
-//! fields and the `u32` protocol version) cross that boundary. The installed
-//! extension must expose the same [`BRIDGE_PROTOCOL_VERSION`].
+//! `PyObserver`, `PyDirection`, or `PyHorizontalDirection` and expect Python
+//! type identity to match. This module imports the installed canonical
+//! extension and asks it to extract or construct its own classes. Only
+//! primitive scalar values (`f64` payload fields and the `u32` protocol
+//! version) cross that boundary. The installed extension must expose the same
+//! [`BRIDGE_PROTOCOL_VERSION`].
 
 use pyo3::exceptions::PyImportError;
 use pyo3::prelude::*;
@@ -22,12 +23,17 @@ const OBSERVER_FROM_PARTS: &str = "_bridge_observer_from_parts";
 const OBSERVER_TO_PARTS: &str = "_bridge_observer_to_parts";
 const DIRECTION_FROM_PARTS: &str = "_bridge_direction_from_parts";
 const DIRECTION_TO_PARTS: &str = "_bridge_direction_to_parts";
+const HORIZONTAL_DIRECTION_FROM_PARTS: &str = "_bridge_horizontal_direction_from_parts";
+const HORIZONTAL_DIRECTION_TO_PARTS: &str = "_bridge_horizontal_direction_to_parts";
 
 /// Protocol implemented by the canonical Python extension bridge hooks.
 ///
 /// Downstream extensions and the installed `siderust` Python package must use
 /// compatible siderust-py releases which expose this same protocol version.
-pub const BRIDGE_PROTOCOL_VERSION: u32 = 1;
+///
+/// Protocol 2 adds horizontal-direction bridge hooks while keeping the
+/// protocol-1 Observer and ICRS Direction APIs unchanged.
+pub const BRIDGE_PROTOCOL_VERSION: u32 = 2;
 
 fn bridge_module<'py>(py: Python<'py>) -> PyResult<Bound<'py, PyModule>> {
     let module = PyModule::import(py, EXTENSION_MODULE)?;
@@ -176,6 +182,67 @@ pub fn direction_to_python(py: Python<'_>, value: &direction::ICRS) -> PyResult<
         .map(Bound::unbind)
 }
 
+/// Stable primitive representation of a horizontal spherical direction.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HorizontalDirectionParts {
+    /// Altitude above the geometric horizon in degrees.
+    pub altitude_degrees: f64,
+    /// Azimuth in degrees, North-clockwise through East.
+    pub azimuth_degrees: f64,
+}
+
+impl HorizontalDirectionParts {
+    /// Convert these horizontal parts into Siderust's current direction type.
+    pub fn into_direction(self) -> direction::Horizontal {
+        direction::Horizontal::new(
+            Degrees::new(self.altitude_degrees),
+            Degrees::new(self.azimuth_degrees),
+        )
+    }
+}
+
+impl From<&direction::Horizontal> for HorizontalDirectionParts {
+    fn from(value: &direction::Horizontal) -> Self {
+        Self {
+            altitude_degrees: value.polar.value(),
+            azimuth_degrees: value.azimuth.value(),
+        }
+    }
+}
+
+/// Extract a canonical Python `siderust.HorizontalDirection` into primitive parts.
+pub fn horizontal_direction_parts_from_python(
+    value: &Bound<'_, PyAny>,
+) -> PyResult<HorizontalDirectionParts> {
+    let (altitude_degrees, azimuth_degrees): (f64, f64) = bridge_module(value.py())?
+        .getattr(HORIZONTAL_DIRECTION_TO_PARTS)?
+        .call1((value,))?
+        .extract()?;
+    Ok(HorizontalDirectionParts {
+        altitude_degrees,
+        azimuth_degrees,
+    })
+}
+
+/// Extract a canonical Python `siderust.HorizontalDirection` as the current type.
+pub fn horizontal_direction_from_python(
+    value: &Bound<'_, PyAny>,
+) -> PyResult<direction::Horizontal> {
+    Ok(horizontal_direction_parts_from_python(value)?.into_direction())
+}
+
+/// Construct the actual `siderust.HorizontalDirection` class owned by the package.
+pub fn horizontal_direction_to_python(
+    py: Python<'_>,
+    value: &direction::Horizontal,
+) -> PyResult<Py<PyAny>> {
+    let parts = HorizontalDirectionParts::from(value);
+    bridge_module(py)?
+        .getattr(HORIZONTAL_DIRECTION_FROM_PARTS)?
+        .call1((parts.altitude_degrees, parts.azimuth_degrees))
+        .map(Bound::unbind)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,5 +269,28 @@ mod tests {
         let round_trip = DirectionParts::from(&parts.into_direction());
         assert!((round_trip.right_ascension_degrees - parts.right_ascension_degrees).abs() < 1e-12);
         assert!((round_trip.declination_degrees - parts.declination_degrees).abs() < 1e-12);
+    }
+
+    #[test]
+    fn horizontal_direction_parts_round_trip() {
+        let parts = HorizontalDirectionParts {
+            altitude_degrees: 45.0,
+            azimuth_degrees: 180.0,
+        };
+        let round_trip = HorizontalDirectionParts::from(&parts.into_direction());
+        assert!((round_trip.altitude_degrees - parts.altitude_degrees).abs() < 1e-12);
+        assert!((round_trip.azimuth_degrees - parts.azimuth_degrees).abs() < 1e-12);
+    }
+
+    #[test]
+    fn horizontal_direction_canonicalizes_altitude() {
+        // Altitude 100° folds to 80° with azimuth shifted by 180°.
+        let parts = HorizontalDirectionParts {
+            altitude_degrees: 100.0,
+            azimuth_degrees: 10.0,
+        };
+        let direction = parts.into_direction();
+        assert!((direction.alt().value() - 80.0).abs() < 1e-12);
+        assert!((direction.az().value() - 190.0).abs() < 1e-12);
     }
 }

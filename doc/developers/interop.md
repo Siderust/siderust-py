@@ -1,8 +1,9 @@
 # Cross-extension interoperability
 
 The public `siderust_py::interop` Rust module lets an independently compiled
-PyO3 extension accept and return the canonical `siderust.Observer` and
-`siderust.Direction` classes from the installed Python package.
+PyO3 extension accept and return the canonical `siderust.Observer`,
+`siderust.Direction`, and `siderust.HorizontalDirection` classes from the
+installed Python package.
 
 ## Supported baseline
 
@@ -35,13 +36,17 @@ and the `u32` protocol version) cross the shared-library boundary.
   reconstructs exactly `Geodetic<ECEF>`.
 - `DirectionParts` carries right ascension and declination in degrees in the
   Siderust `direction::ICRS` frame.
+- `HorizontalDirectionParts` carries altitude above the geometric horizon and
+  North-clockwise azimuth (through East) in degrees for
+  `direction::Horizontal`. No atmospheric refraction is applied.
 
 ## Protocol compatibility
 
 The canonical extension exposes a private integer `_bridge_protocol_version`.
 The Rust interop API checks it before calling any bridge hook. Protocol 1
-defines the primitive representations documented above. A missing, malformed,
-or different protocol produces `ImportError` with the expected and installed
+defined Observer and ICRS Direction primitives. Protocol 2 adds horizontal
+direction while keeping those hooks unchanged. A missing, malformed, or
+different protocol produces `ImportError` with the expected and installed
 versions instead of failing later with an obscure missing-function error.
 
 The Rust `siderust-py` dependency linked into a downstream extension and the
@@ -57,7 +62,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.30"
-siderust-py = "0.5"
+siderust-py = "0.6"
 tempoch-py = "0.5"
 ```
 
@@ -115,6 +120,28 @@ fn copy_direction(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Py<PyAny
 Objects of the wrong canonical type raise Python `TypeError`. Downstream code
 should use these functions rather than depending on siderust-py's private
 `#[pyclass]` implementation types.
+
+## HorizontalDirection example
+
+```rust
+use pyo3::prelude::*;
+use siderust_py::interop::{
+    horizontal_direction_from_python, horizontal_direction_to_python,
+    HorizontalDirectionParts,
+};
+
+#[pyfunction]
+fn inspect_horizontal(value: &Bound<'_, PyAny>) -> PyResult<(f64, f64)> {
+    let direction = horizontal_direction_from_python(value)?;
+    let parts = HorizontalDirectionParts::from(&direction);
+    Ok((parts.altitude_degrees, parts.azimuth_degrees))
+}
+
+#[pyfunction]
+fn copy_horizontal(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Py<PyAny>> {
+    horizontal_direction_to_python(py, &horizontal_direction_from_python(value)?)
+}
+```
 
 ## Coordinated release and downstream validation
 

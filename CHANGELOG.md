@@ -5,6 +5,25 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-10-26
+
+### Added
+
+- Python `HorizontalDirection` wrapping Siderust `direction::Horizontal`
+  (`alt_deg`, `az_deg`): altitude above the geometric horizon, North-clockwise
+  azimuth through East, no refraction.
+- Bridge protocol 2 hooks `_bridge_horizontal_direction_from_parts` /
+  `_bridge_horizontal_direction_to_parts` and Rust interop helpers
+  `horizontal_direction_from_python` / `horizontal_direction_to_python` with
+  `HorizontalDirectionParts`.
+
+### Changed
+
+- **Breaking:** bump `_bridge_protocol_version` from 1 to 2. Protocol 2 adds
+  horizontal-direction bridge hooks while keeping the protocol-1 Observer and
+  ICRS Direction hooks unchanged. Downstream extensions must depend on
+  siderust-py 0.6 and install a matching Python package.
+
 ## [0.5.1] - 2026-10-24
 
 ### Fixed

@@ -14,6 +14,7 @@ from siderust._siderust import (
     Body,
     Star,
     Direction,
+    HorizontalDirection,
     Position,
     SphericalPosition,
     # Event types
@@ -58,6 +59,7 @@ __all__ = [
     "Body",
     "Star",
     "Direction",
+    "HorizontalDirection",
     "Position",
     "SphericalPosition",
     # Event types

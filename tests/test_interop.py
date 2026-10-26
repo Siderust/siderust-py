@@ -27,8 +27,8 @@ def test_combined_bridge_rejects_naive_datetimes():
 
 
 def test_bridge_protocol_matches_canonical_extension():
-    assert canonical_extension._bridge_protocol_version == 1
-    assert consumer.bridge_protocol_version() == 1
+    assert canonical_extension._bridge_protocol_version == 2
+    assert consumer.bridge_protocol_version() == 2
 
 
 def test_bridge_rejects_incompatible_protocol(monkeypatch):
@@ -36,7 +36,7 @@ def test_bridge_rejects_incompatible_protocol(monkeypatch):
 
     with pytest.raises(
         ImportError,
-        match=r"incompatible siderust bridge protocol: expected 1, found 999",
+        match=r"incompatible siderust bridge protocol: expected 2, found 999",
     ):
         consumer.observer_parts(siderust.Observer(0.0, 0.0))
 
@@ -46,7 +46,7 @@ def test_bridge_rejects_missing_protocol(monkeypatch):
 
     with pytest.raises(
         ImportError,
-        match=r"does not expose a valid _bridge_protocol_version; expected bridge protocol 1",
+        match=r"does not expose a valid _bridge_protocol_version; expected bridge protocol 2",
     ):
         consumer.direction_parts(siderust.Direction(0.0, 0.0))
 
@@ -73,6 +73,16 @@ def test_direction_cross_extension_round_trip():
     assert (result.ra_deg, result.dec_deg) == pytest.approx((83.633, 22.014))
 
 
+def test_horizontal_direction_cross_extension_round_trip():
+    direction = siderust.HorizontalDirection(45.0, 180.0)
+
+    assert consumer.horizontal_direction_parts(direction) == pytest.approx((45.0, 180.0))
+    result = consumer.horizontal_direction_round_trip(direction)
+
+    assert type(result) is siderust.HorizontalDirection
+    assert (result.alt_deg, result.az_deg) == pytest.approx((45.0, 180.0))
+
+
 @pytest.mark.parametrize(
     ("function", "wrong_value"),
     [
@@ -80,6 +90,9 @@ def test_direction_cross_extension_round_trip():
         (consumer.observer_round_trip, siderust.Direction(10.0, 20.0)),
         (consumer.direction_parts, object()),
         (consumer.direction_round_trip, siderust.Observer(10.0, 20.0)),
+        (consumer.horizontal_direction_parts, object()),
+        (consumer.horizontal_direction_round_trip, siderust.Direction(10.0, 20.0)),
+        (consumer.horizontal_direction_round_trip, siderust.Observer(10.0, 20.0)),
     ],
 )
 def test_bridge_rejects_noncanonical_types(function, wrong_value):
@@ -105,3 +118,13 @@ def test_bridge_rejects_non_finite_direction_parts(field, value):
 
     with pytest.raises(ValueError, match=rf"{field} must be finite"):
         consumer.direction_from_parts(parts["ra_deg"], parts["dec_deg"])
+
+
+@pytest.mark.parametrize("field", ["alt_deg", "az_deg"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_bridge_rejects_non_finite_horizontal_direction_parts(field, value):
+    parts = {"alt_deg": 0.0, "az_deg": 0.0}
+    parts[field] = value
+
+    with pytest.raises(ValueError, match=rf"{field} must be finite"):
+        consumer.horizontal_direction_from_parts(parts["alt_deg"], parts["az_deg"])

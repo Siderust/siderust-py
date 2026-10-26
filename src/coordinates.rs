@@ -187,3 +187,129 @@ impl PyDirection {
         Ok((cls, (self.ra_deg(), self.dec_deg())))
     }
 }
+
+/// A local horizontal sky direction (altitude, azimuth).
+///
+/// Altitude is measured above the geometric horizon; azimuth follows the
+/// North-clockwise convention (0° = North, increasing through East). Values
+/// are geometric (no atmospheric refraction).
+///
+/// >>> h = HorizontalDirection(alt_deg=45.0, az_deg=180.0)  # due South at 45°
+#[pyclass(name = "HorizontalDirection", module = "siderust", from_py_object)]
+#[derive(Clone, Copy)]
+pub struct PyHorizontalDirection {
+    pub(crate) inner: direction::Horizontal,
+}
+
+impl PyHorizontalDirection {
+    pub fn from_inner(inner: direction::Horizontal) -> Self {
+        Self { inner }
+    }
+}
+
+#[pyfunction]
+pub(crate) fn _bridge_horizontal_direction_to_parts(
+    value: &Bound<'_, PyAny>,
+) -> PyResult<(f64, f64)> {
+    let direction = value.cast::<PyHorizontalDirection>()?.borrow();
+    Ok((direction.alt_deg(), direction.az_deg()))
+}
+
+#[pyfunction]
+pub(crate) fn _bridge_horizontal_direction_from_parts(
+    alt_deg: f64,
+    az_deg: f64,
+) -> PyResult<PyHorizontalDirection> {
+    PyHorizontalDirection::new(alt_deg, az_deg)
+}
+
+#[allow(clippy::wrong_self_convention)]
+#[pymethods]
+impl PyHorizontalDirection {
+    /// Create a horizontal direction from altitude and azimuth.
+    ///
+    /// Args:
+    ///     alt_deg: Altitude above the geometric horizon in degrees
+    ///         (preferably in ``[-90, 90]``; out-of-range values are
+    ///         canonicalized by Siderust).
+    ///     az_deg: Azimuth in degrees, North-clockwise through East.
+    ///
+    /// Both angles must be finite. No atmospheric refraction is applied.
+    #[new]
+    fn new(alt_deg: f64, az_deg: f64) -> PyResult<Self> {
+        for (name, value) in [("alt_deg", alt_deg), ("az_deg", az_deg)] {
+            if !value.is_finite() {
+                return Err(PyValueError::new_err(format!("{name} must be finite")));
+            }
+        }
+
+        Ok(Self {
+            inner: direction::Horizontal::new(Degrees::new(alt_deg), Degrees::new(az_deg)),
+        })
+    }
+
+    /// Altitude above the geometric horizon in degrees.
+    #[getter]
+    fn alt_deg(&self) -> f64 {
+        self.inner.alt().to::<Degree>().value()
+    }
+
+    /// Azimuth in degrees (North-clockwise through East).
+    #[getter]
+    fn az_deg(&self) -> f64 {
+        self.inner.az().to::<Degree>().value()
+    }
+
+    /// Convert to a dictionary.
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyDict>> {
+        let d = pyo3::types::PyDict::new(py);
+        d.set_item("alt_deg", self.alt_deg())?;
+        d.set_item("az_deg", self.az_deg())?;
+        Ok(d)
+    }
+
+    /// Create from a dictionary.
+    #[staticmethod]
+    fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
+        let alt: f64 = d
+            .get_item("alt_deg")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'alt_deg'"))?
+            .extract()?;
+        let az: f64 = d
+            .get_item("az_deg")?
+            .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'az_deg'"))?
+            .extract()?;
+        Self::new(alt, az)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "HorizontalDirection(alt={:.4}°, az={:.4}°)",
+            self.alt_deg(),
+            self.az_deg()
+        )
+    }
+
+    fn __str__(&self) -> String {
+        self.__repr__()
+    }
+
+    fn __eq__(&self, other: &PyHorizontalDirection) -> bool {
+        (self.alt_deg() - other.alt_deg()).abs() < 1e-10
+            && (self.az_deg() - other.az_deg()).abs() < 1e-10
+    }
+
+    fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        self.inner.polar.value().to_bits().hash(&mut hasher);
+        self.inner.azimuth.value().to_bits().hash(&mut hasher);
+        hasher.finish()
+    }
+
+    fn __reduce__(&self, py: Python<'_>) -> PyResult<(Py<PyAny>, (f64, f64))> {
+        let cls = py.get_type::<Self>().into_any().unbind();
+        Ok((cls, (self.alt_deg(), self.az_deg())))
+    }
+}
