@@ -5,6 +5,20 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Add citation metadata for the Python bindings and guidance to cite the core
+  Siderust library and underlying scientific models and datasets.
+- Publish a GitHub Release for each successful version-tagged PyPI/crates.io
+  release, with version-matched CHANGELOG notes and safe reruns.
+
+### Changed
+
+- Show the Python distribution's PyPI version in the README badge, while
+  keeping docs.rs for the Rust interoperability crate.
+
 ## [0.6.0] - 2026-10-26
 
 ### Added

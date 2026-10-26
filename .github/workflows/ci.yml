@@ -94,6 +94,10 @@ jobs:
           python-version: "3.14"
       - name: Test release policy guards
         run: bash scripts/test-publish-release-policy.sh
+      - name: Validate citation and release notes for the package version
+        run: |
+          VERSION="$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          python scripts/release_notes.py --tag "v$VERSION" --output "$RUNNER_TEMP/release-notes.md"
       - name: Validate packaged crate and publish dry-run
         run: bash scripts/publish-release.sh --dry-run
 

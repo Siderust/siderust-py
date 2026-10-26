@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use Siderust for Python in scientific work, cite this package, the Siderust Rust core, and the astronomical models and datasets relevant to your analysis."
+type: software
+title: "Siderust for Python: Rust-backed Astrometry and Astrodynamics"
+abstract: "Python bindings for Siderust, providing Rust-backed, reference-frame-aware astrometry, celestial coordinates, ephemerides, observation planning, and astrodynamics."
+authors:
+  - family-names: "Vallés Puig"
+    given-names: "Ramon"
+repository-code: "https://github.com/Siderust/siderust-py"
+url: "https://github.com/Siderust/siderust-py"
+license: "AGPL-3.0-only"
+version: "0.6.0"
+keywords:
+  - astronomy
+  - astrometry
+  - astrodynamics
+  - ephemerides
+  - python
+  - rust
