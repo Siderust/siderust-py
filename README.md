@@ -1,6 +1,6 @@
 # siderust-py
 
-[![Crates.io](https://img.shields.io/crates/v/siderust-py.svg)](https://crates.io/crates/siderust-py)
+[![PyPI](https://img.shields.io/pypi/v/siderust.svg)](https://pypi.org/project/siderust/)
 [![Docs.rs](https://docs.rs/siderust-py/badge.svg)](https://docs.rs/siderust-py)
 [![CI](https://github.com/Siderust/siderust-py/actions/workflows/ci.yml/badge.svg)](https://github.com/Siderust/siderust-py/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
@@ -14,9 +14,9 @@ coordinate queries, ephemerides, solar-system bodies, stellar targets,
 moon-phase calculations, and related astronomy utilities while keeping the
 numerical implementation in Rust.
 
-The Crates.io and docs.rs badges above refer to the `siderust-py` Rust crate,
-which exposes the supported cross-extension interoperability API. The Python
-package is imported as `siderust`.
+The PyPI badge refers to the Python distribution (`siderust`). The docs.rs
+badge documents the companion `siderust-py` Rust crate for cross-extension
+interoperability. The Python package is imported as `siderust`.
 
 ## Features
 
@@ -229,7 +229,7 @@ Add the published interoperability crate to a Rust extension:
 ```toml
 [dependencies]
 pyo3 = "0.30"
-siderust-py = "0.5"
+siderust-py = "0.6"
 ```
 
 The public bridge lives under `siderust_py::interop` and uses a versioned,
@@ -292,6 +292,14 @@ python -m ruff check python tests examples scripts
 
 The CI matrix validates Python 3.9 through 3.14 and also exercises the
 cross-extension bridge contract on Linux, macOS, and Windows.
+
+## Citation
+
+If you use Siderust for Python in scientific work, cite this repository using
+[CITATION.cff](CITATION.cff) (also available through GitHub's **Cite this
+repository** action). Cite the underlying
+[Siderust Rust core](https://github.com/Siderust/siderust/blob/main/CITATION.cff)
+and the astronomical models and datasets relevant to your analysis as well.
 
 ## Changelog
 
