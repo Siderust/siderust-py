@@ -15,7 +15,7 @@ trap 'rm -rf "$workdir"' EXIT
 cp "$1" "$workdir/source.tar.gz"
 cp "$ROOT/pyproject.toml" "$workdir/pyproject.toml"
 mkdir "$workdir/tests"
-cp "$ROOT/tests/test_api.py" "$workdir/tests/"
+cp "$ROOT/tests/test_api.py" "$ROOT/tests/test_direction.py" "$workdir/tests/"
 
 python3 -m venv "$workdir/build-env"
 python3 -m venv "$workdir/test-env"

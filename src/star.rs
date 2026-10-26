@@ -77,7 +77,9 @@ impl PyStar {
     ///     ra_deg: Right ascension in degrees.
     ///     dec_deg: Declination in degrees.
     #[staticmethod]
-    fn from_ra_dec(name: &str, ra_deg: f64, dec_deg: f64) -> Self {
+    fn from_ra_dec(name: &str, ra_deg: f64, dec_deg: f64) -> PyResult<Self> {
+        // Stars can later produce canonical ICRS values through track().
+        crate::coordinates::PyIcrs::new(ra_deg, dec_deg)?;
         use siderust::coordinates::centers::Geocentric;
         use siderust::coordinates::frames::EquatorialMeanJ2000;
         use siderust::targets::CoordinateWithPM;
@@ -89,7 +91,7 @@ impl PyStar {
 
         let coord = CoordinateWithPM::new_static(pos, siderust::J2000);
 
-        Self {
+        Ok(Self {
             inner: Star::new(
                 name.to_string(),
                 LightYears::new(1.0),
@@ -98,7 +100,7 @@ impl PyStar {
                 SolarLuminosities::new(1.0),
                 coord,
             ),
-        }
+        })
     }
 
     // ── Properties ────────────────────────────────────────────────────
@@ -169,7 +171,7 @@ impl PyStar {
     ///     jd: Julian Date.
     ///
     /// Returns:
-    ///     Target with the star's Direction at the given epoch.
+    ///     Target with the star's direction.ICRS at the given epoch.
     fn track(&self, jd: f64) -> crate::target::PyTarget {
         crate::target::track_star(self, jd)
     }
@@ -227,6 +229,6 @@ impl PyStar {
             .get_item("dec_deg")?
             .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing 'dec_deg'"))?
             .extract()?;
-        Ok(Self::from_ra_dec(&name, ra, dec))
+        Self::from_ra_dec(&name, ra, dec)
     }
 }

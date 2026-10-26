@@ -21,7 +21,7 @@ mod star;
 mod target;
 
 use bodies::PyBody;
-use coordinates::PyDirection;
+use coordinates::{PyHorizontal, PyIcrs};
 use ephemeris::PyRuntimeEphemeris;
 use events::{PyCrossingDirection, PyCrossingEvent, PyCulminationEvent, PyCulminationKind};
 use observer::PyObserver;
@@ -49,7 +49,8 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyObserver>()?;
     m.add_class::<PyBody>()?;
     m.add_class::<PyStar>()?;
-    m.add_class::<PyDirection>()?;
+    m.add_class::<PyIcrs>()?;
+    m.add_class::<PyHorizontal>()?;
     m.add_class::<PyPosition>()?;
     m.add_class::<PySphericalPosition>()?;
 
@@ -87,12 +88,14 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Private canonical-extension hooks used by the public Rust interop API.
     m.add_function(wrap_pyfunction!(observer::_bridge_observer_to_parts, m)?)?;
     m.add_function(wrap_pyfunction!(observer::_bridge_observer_from_parts, m)?)?;
+    m.add_function(wrap_pyfunction!(coordinates::_bridge_icrs_to_parts, m)?)?;
+    m.add_function(wrap_pyfunction!(coordinates::_bridge_icrs_from_parts, m)?)?;
     m.add_function(wrap_pyfunction!(
-        coordinates::_bridge_direction_to_parts,
+        coordinates::_bridge_horizontal_to_parts,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        coordinates::_bridge_direction_from_parts,
+        coordinates::_bridge_horizontal_from_parts,
         m
     )?)?;
     m.add("_bridge_protocol_version", interop::BRIDGE_PROTOCOL_VERSION)?;

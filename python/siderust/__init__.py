@@ -7,13 +7,14 @@ queries, ephemeris access, and moon-phase computation — all backed by
 Rust for performance and precision.
 """
 
+from . import direction
+
 # Import from the Rust extension module
 from siderust._siderust import (
     # Core types
     Observer,
     Body,
     Star,
-    Direction,
     Position,
     SphericalPosition,
     # Event types
@@ -53,11 +54,11 @@ from siderust._siderust import (
 )
 
 __all__ = [
+    "direction",
     # Core types
     "Observer",
     "Body",
     "Star",
-    "Direction",
     "Position",
     "SphericalPosition",
     # Event types

@@ -9,7 +9,7 @@ use siderust::time::{Interval, ModifiedJulianDate};
 use siderust::{AltitudeProvider, SearchOpts};
 
 use crate::bodies::{dispatch_body, PyBody};
-use crate::coordinates::PyDirection;
+use crate::coordinates::PyIcrs;
 use crate::errors::invalid_period_error;
 use crate::events::{PyCrossingEvent, PyCulminationEvent};
 use crate::observer::PyObserver;
@@ -23,10 +23,10 @@ use crate::star::PyStar;
 enum Subject<'py> {
     Body(PyBody),
     Star(PyRef<'py, PyStar>),
-    Dir(PyRef<'py, PyDirection>),
+    Dir(PyRef<'py, PyIcrs>),
 }
 
-/// A Python-friendly "subject" that can be a Body, Star, or Direction.
+/// A Python-friendly "subject" that can be a Body, Star, or direction.ICRS.
 /// We accept `&Bound<'_, PyAny>` and try to extract each type.
 fn extract_subject<'py>(target: &Bound<'py, PyAny>) -> PyResult<Subject<'py>> {
     // Try Body enum first
@@ -37,12 +37,12 @@ fn extract_subject<'py>(target: &Bound<'py, PyAny>) -> PyResult<Subject<'py>> {
     if let Ok(star) = target.extract::<PyRef<'_, PyStar>>() {
         return Ok(Subject::Star(star));
     }
-    // Try Direction
-    if let Ok(dir) = target.extract::<PyRef<'_, PyDirection>>() {
+    // Try direction.ICRS
+    if let Ok(dir) = target.extract::<PyRef<'_, PyIcrs>>() {
         return Ok(Subject::Dir(dir));
     }
     Err(pyo3::exceptions::PyTypeError::new_err(
-        "target must be a Body, Star, or Direction",
+        "target must be a Body, Star, or direction.ICRS",
     ))
 }
 
@@ -63,7 +63,7 @@ fn make_window(start_mjd: f64, end_mjd: f64) -> PyResult<Interval<ModifiedJulian
 /// Compute the altitude of a target in degrees.
 ///
 /// Args:
-///     target: A Body, Star, or Direction.
+///     target: A Body, Star, or direction.ICRS.
 ///     observer: Observer location.
 ///     mjd: Modified Julian Date (float).
 ///
@@ -93,7 +93,7 @@ pub fn altitude_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) -
 /// Compute the azimuth of a target in degrees.
 ///
 /// Args:
-///     target: A Body, Star, or Direction.
+///     target: A Body, Star, or direction.ICRS.
 ///     observer: Observer location.
 ///     mjd: Modified Julian Date (float).
 ///
@@ -121,7 +121,7 @@ pub fn azimuth_at(target: &Bound<'_, PyAny>, observer: &PyObserver, mjd: f64) ->
 /// Find periods when a target is above a threshold altitude.
 ///
 /// Args:
-///     target: A Body, Star, or Direction.
+///     target: A Body, Star, or direction.ICRS.
 ///     observer: Observer location.
 ///     start_mjd: Start of the search window (MJD).
 ///     end_mjd: End of the search window (MJD).
@@ -162,7 +162,7 @@ pub fn above_threshold(
 /// Find periods when a target is below a threshold altitude.
 ///
 /// Args:
-///     target: A Body, Star, or Direction.
+///     target: A Body, Star, or direction.ICRS.
 ///     observer: Observer location.
 ///     start_mjd: Start of the search window (MJD).
 ///     end_mjd: End of the search window (MJD).
@@ -203,7 +203,7 @@ pub fn below_threshold(
 /// Find threshold-crossing events (rise/set) for a target.
 ///
 /// Args:
-///     target: A Body, Star, or Direction.
+///     target: A Body, Star, or direction.ICRS.
 ///     observer: Observer location.
 ///     start_mjd: Start of the search window (MJD).
 ///     end_mjd: End of the search window (MJD).
@@ -241,7 +241,7 @@ pub fn crossings(
 /// Find culmination events (local altitude extrema) for a target.
 ///
 /// Args:
-///     target: A Body, Star, or Direction.
+///     target: A Body, Star, or direction.ICRS.
 ///     observer: Observer location.
 ///     start_mjd: Start of the search window (MJD).
 ///     end_mjd: End of the search window (MJD).

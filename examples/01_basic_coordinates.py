@@ -6,7 +6,8 @@ Mirrors: siderust/examples/01_basic_coordinates.rs
 Run with: python examples/01_basic_coordinates.py
 """
 
-from siderust import Direction, Position, SphericalPosition
+from siderust import Position, SphericalPosition
+from siderust.direction import ICRS
 
 
 def main():
@@ -44,9 +45,9 @@ def main():
     print("2. SPHERICAL COORDINATES")
     print("------------------------")
 
-    # Create a star direction (Polaris approximately) using Direction
-    polaris = Direction(ra_deg=37.95, dec_deg=89.26)
-    print("Polaris (ICRS Direction):")
+    # Create a star direction (Polaris approximately) using ICRS
+    polaris = ICRS(ra_deg=37.95, dec_deg=89.26)
+    print("Polaris (ICRS ICRS):")
     print(f"  Right Ascension = {polaris.ra_deg:.2f}°")
     print(f"  Declination = {polaris.dec_deg:.2f}°\n")
 
@@ -72,7 +73,7 @@ def main():
     print("----------------------------")
 
     # Directions are ICRS coordinates (RA/Dec)
-    zenith_like = Direction(ra_deg=0.0, dec_deg=90.0)
+    zenith_like = ICRS(ra_deg=0.0, dec_deg=90.0)
     print("North celestial pole direction (ICRS):")
     print(f"  RA = {zenith_like.ra_deg:.1f}°")
     print(f"  Dec = {zenith_like.dec_deg:.1f}°\n")

@@ -15,13 +15,13 @@ Run with: python examples/05_target_tracking.py
 from siderust import (
     Body,
     Comet,
-    Direction,
     Orbit,
     ProperMotion,
     Star,
     Target,
     apply_proper_motion,
 )
+from siderust.direction import ICRS
 
 J2000 = 2451545.0
 JULIAN_YEAR = 365.25
@@ -35,7 +35,7 @@ def section_trackable_objects():
     jd_next = jd + 1.0
 
     # Directions are time-invariant
-    fixed_icrs = Direction(ra_deg=120.0, dec_deg=22.5)
+    fixed_icrs = ICRS(ra_deg=120.0, dec_deg=22.5)
     t1 = fixed_icrs.track(jd)
     t2 = fixed_icrs.track(jd_next)
     print(
