@@ -7,13 +7,14 @@ Demonstrates all standard center-shift pairs:
   Barycentric <-> Heliocentric
   Barycentric <-> Geocentric
   Heliocentric <-> Geocentric
+  plus Selenocentric shifts introduced with Siderust 0.16.
 
 Run with: python examples/04_all_center_conversions.py
 """
 
 from siderust import Position
 
-CENTERS = ["Barycentric", "Heliocentric", "Geocentric"]
+CENTERS = ["Barycentric", "Heliocentric", "Geocentric", "Selenocentric"]
 
 
 def show_center_conversion(jd: float, src: Position, to_center: str) -> None:
@@ -49,25 +50,15 @@ def main():
     # Convert to other centers
     p_helio = p_bary.to_center("Heliocentric", jd)
     p_geo = p_bary.to_center("Geocentric", jd)
+    p_seleno = p_bary.to_center("Selenocentric", jd)
 
     # ── Standard center shifts ───────────────────────────────────────
     print("── Standard center shifts ─────────────────────────────────────────────")
 
-    # Barycentric source
-    for target in CENTERS:
-        show_center_conversion(jd, p_bary, target)
-
-    print()
-
-    # Heliocentric source
-    for target in CENTERS:
-        show_center_conversion(jd, p_helio, target)
-
-    print()
-
-    # Geocentric source
-    for target in CENTERS:
-        show_center_conversion(jd, p_geo, target)
+    for src in (p_bary, p_helio, p_geo, p_seleno):
+        for target in CENTERS:
+            show_center_conversion(jd, src, target)
+        print()
 
     # ── Combined frame + center transforms ───────────────────────────
     print("\n── Combined frame + center transforms ─────────────────────────────────")
@@ -80,7 +71,7 @@ def main():
 
     for frame in frames:
         src = p_bary.to_frame(frame, jd)
-        for target_center in ["Heliocentric", "Geocentric"]:
+        for target_center in ["Heliocentric", "Geocentric", "Selenocentric"]:
             out = src.to_center(target_center, jd)
             back = out.to_center(src.center, jd)
             dx = src.x - back.x

@@ -12,6 +12,7 @@ mod ephemeris;
 mod errors;
 mod events;
 pub mod interop;
+mod lunar;
 mod observer;
 mod orbit;
 mod phase;
@@ -24,6 +25,7 @@ use bodies::PyBody;
 use coordinates::{PyHorizontal, PyIcrs};
 use ephemeris::PyRuntimeEphemeris;
 use events::{PyCrossingDirection, PyCrossingEvent, PyCulminationEvent, PyCulminationKind};
+use lunar::{PyLunarObservation, PyLunarObserver};
 use observer::PyObserver;
 use orbit::{PyComet, PyOrbit};
 use phase::{PyMoonPhaseGeometry, PyMoonPhaseLabel, PyPhaseEvent, PyPhaseKind};
@@ -47,6 +49,8 @@ use target::{PyProperMotion, PyTarget};
 fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Core types
     m.add_class::<PyObserver>()?;
+    m.add_class::<PyLunarObserver>()?;
+    m.add_class::<PyLunarObservation>()?;
     m.add_class::<PyBody>()?;
     m.add_class::<PyStar>()?;
     m.add_class::<PyIcrs>()?;

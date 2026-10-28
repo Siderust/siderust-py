@@ -13,6 +13,8 @@ from . import direction
 from siderust._siderust import (
     # Core types
     Observer,
+    LunarObserver,
+    LunarObservation,
     Body,
     Star,
     Position,
@@ -57,6 +59,8 @@ __all__ = [
     "direction",
     # Core types
     "Observer",
+    "LunarObserver",
+    "LunarObservation",
     "Body",
     "Star",
     "Position",

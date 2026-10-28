@@ -7,9 +7,10 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use siderust::coordinates::cartesian::Position as CPosition;
-use siderust::coordinates::centers::{Barycentric, Geocentric, Heliocentric};
+use siderust::coordinates::centers::{Barycentric, Geocentric, Heliocentric, Selenocentric};
 use siderust::coordinates::frames::{
     self, EclipticMeanJ2000, EquatorialMeanJ2000, EquatorialMeanOfDate, EquatorialTrueOfDate,
+    MoonIauMeanEarth,
 };
 use siderust::coordinates::transform::ext::PositionAstroExt;
 use siderust::coordinates::transform::TransformCenter;
@@ -26,10 +27,15 @@ pub const FRAME_ICRS: &str = "ICRS";
 pub const FRAME_ICRF: &str = "ICRF";
 pub const FRAME_EMOD: &str = "EquatorialMeanOfDate";
 pub const FRAME_ETOD: &str = "EquatorialTrueOfDate";
+/// Preferred name for NAIF `IAU_MOON` analytical Mean-Earth (not JPL DE `MOON_PA`).
+pub const FRAME_MOON_IAU: &str = "MoonIauMeanEarth";
+/// Legacy alias for [`FRAME_MOON_IAU`]; accepted on input and canonicalized.
+pub const FRAME_MOON_PA: &str = "MoonPrincipalAxes";
 
 pub const CENTER_BARY: &str = "Barycentric";
 pub const CENTER_HELIO: &str = "Heliocentric";
 pub const CENTER_GEO: &str = "Geocentric";
+pub const CENTER_SELENO: &str = "Selenocentric";
 
 pub const UNIT_AU: &str = "au";
 pub const UNIT_KM: &str = "km";
@@ -38,12 +44,16 @@ const AU_KM: f64 = 149_597_870.700;
 
 type PositionReduceArgs = (f64, f64, f64, String, String, String);
 
-fn validate_frame(f: &str) -> PyResult<()> {
+/// Canonicalize a frame name; `MoonPrincipalAxes` → `MoonIauMeanEarth`.
+pub(crate) fn canonicalize_frame(f: &str) -> PyResult<String> {
     match f {
-        FRAME_ECL | FRAME_EQ | FRAME_ICRS | FRAME_ICRF | FRAME_EMOD | FRAME_ETOD => Ok(()),
+        FRAME_ECL | FRAME_EQ | FRAME_ICRS | FRAME_ICRF | FRAME_EMOD | FRAME_ETOD
+        | FRAME_MOON_IAU => Ok(f.to_string()),
+        FRAME_MOON_PA => Ok(FRAME_MOON_IAU.to_string()),
         _ => Err(PyValueError::new_err(format!(
             "Unknown frame '{}'. Valid: EclipticMeanJ2000, EquatorialMeanJ2000, ICRS, ICRF, \
-             EquatorialMeanOfDate, EquatorialTrueOfDate",
+             EquatorialMeanOfDate, EquatorialTrueOfDate, MoonIauMeanEarth \
+             (alias MoonPrincipalAxes = NAIF IAU_MOON Mean-Earth, not JPL DE MOON_PA)",
             f
         ))),
     }
@@ -51,9 +61,9 @@ fn validate_frame(f: &str) -> PyResult<()> {
 
 fn validate_center(c: &str) -> PyResult<()> {
     match c {
-        CENTER_BARY | CENTER_HELIO | CENTER_GEO => Ok(()),
+        CENTER_BARY | CENTER_HELIO | CENTER_GEO | CENTER_SELENO => Ok(()),
         _ => Err(PyValueError::new_err(format!(
-            "Unknown center '{}'. Valid: Barycentric, Heliocentric, Geocentric",
+            "Unknown center '{}'. Valid: Barycentric, Heliocentric, Geocentric, Selenocentric",
             c
         ))),
     }
@@ -81,6 +91,9 @@ macro_rules! frame_conv {
     }};
 }
 
+/// Inertial target frames with direct providers from common sources.
+/// MoonIauMeanEarth is handled separately: not every source frame has a
+/// direct `FrameRotationProvider` (e.g. ICRF → Moon must compose via ICRS).
 macro_rules! to_frame_inner {
     ($x:expr, $y:expr, $z:expr, $jd:expr, $to:expr, $F:ty) => {
         match $to {
@@ -103,6 +116,7 @@ macro_rules! to_frame_from_ecl {
             FRAME_EQ  => frame_conv!($x, $y, $z, $jd, EclipticMeanJ2000 => EquatorialMeanJ2000),
             FRAME_ICRS => frame_conv!($x, $y, $z, $jd, EclipticMeanJ2000 => frames::ICRS),
             FRAME_ICRF => frame_conv!($x, $y, $z, $jd, EclipticMeanJ2000 => frames::ICRF),
+            FRAME_MOON_IAU => frame_conv!($x, $y, $z, $jd, EclipticMeanJ2000 => MoonIauMeanEarth),
             FRAME_EMOD | FRAME_ETOD => {
                 // Chain: ECL → EQ → target
                 let (ix, iy, iz) = frame_conv!($x, $y, $z, $jd,
@@ -114,7 +128,7 @@ macro_rules! to_frame_from_ecl {
     };
 }
 
-/// Subset of target frames for EMOD/ETOD source (no direct →ECL provider).
+/// Subset of target frames for EMOD/ETOD source (no direct →ECL / →Moon provider).
 macro_rules! to_frame_from_time_dep {
     ($x:expr, $y:expr, $z:expr, $jd:expr, $to:expr, $F:ty) => {
         match $to {
@@ -123,18 +137,35 @@ macro_rules! to_frame_from_time_dep {
             FRAME_ICRF => frame_conv!($x, $y, $z, $jd, $F => frames::ICRF),
             FRAME_EMOD => frame_conv!($x, $y, $z, $jd, $F => EquatorialMeanOfDate),
             FRAME_ETOD => frame_conv!($x, $y, $z, $jd, $F => EquatorialTrueOfDate),
-            FRAME_ECL => {
-                // Chain: source → EQ → ECL
-                let (ix, iy, iz) = frame_conv!($x, $y, $z, $jd,
-                    $F => EquatorialMeanJ2000)?;
-                convert_frame(ix, iy, iz, FRAME_EQ, FRAME_ECL, $jd)
+            FRAME_ECL | FRAME_MOON_IAU => {
+                // Chain: source → ICRS → target
+                let (ix, iy, iz) = frame_conv!($x, $y, $z, $jd, $F => frames::ICRS)?;
+                convert_frame(ix, iy, iz, FRAME_ICRS, $to, $jd)
             },
             _ => unreachable!(),
         }
     };
 }
 
-fn convert_frame(
+/// MoonIauMeanEarth source: direct to ICRS/ECL/EQ; others via ICRS.
+macro_rules! to_frame_from_moon {
+    ($x:expr, $y:expr, $z:expr, $jd:expr, $to:expr) => {
+        match $to {
+            FRAME_MOON_IAU => Ok(($x, $y, $z)),
+            FRAME_ICRS => frame_conv!($x, $y, $z, $jd, MoonIauMeanEarth => frames::ICRS),
+            FRAME_ECL => frame_conv!($x, $y, $z, $jd, MoonIauMeanEarth => EclipticMeanJ2000),
+            FRAME_EQ => frame_conv!($x, $y, $z, $jd, MoonIauMeanEarth => EquatorialMeanJ2000),
+            FRAME_ICRF | FRAME_EMOD | FRAME_ETOD => {
+                let (ix, iy, iz) =
+                    frame_conv!($x, $y, $z, $jd, MoonIauMeanEarth => frames::ICRS)?;
+                convert_frame(ix, iy, iz, FRAME_ICRS, $to, $jd)
+            },
+            _ => unreachable!(),
+        }
+    };
+}
+
+pub(crate) fn convert_frame(
     x: f64,
     y: f64,
     z: f64,
@@ -142,16 +173,34 @@ fn convert_frame(
     to: &str,
     jd: JulianDate,
 ) -> PyResult<(f64, f64, f64)> {
+    let from = canonicalize_frame(from)?;
+    let to = canonicalize_frame(to)?;
     if from == to {
         return Ok((x, y, z));
     }
-    match from {
-        FRAME_ECL => to_frame_from_ecl!(x, y, z, jd, to),
-        FRAME_EQ => to_frame_inner!(x, y, z, jd, to, EquatorialMeanJ2000),
-        FRAME_ICRS => to_frame_inner!(x, y, z, jd, to, frames::ICRS),
-        FRAME_ICRF => to_frame_inner!(x, y, z, jd, to, frames::ICRF),
-        FRAME_EMOD => to_frame_from_time_dep!(x, y, z, jd, to, EquatorialMeanOfDate),
-        FRAME_ETOD => to_frame_from_time_dep!(x, y, z, jd, to, EquatorialTrueOfDate),
+    match from.as_str() {
+        FRAME_ECL => to_frame_from_ecl!(x, y, z, jd, to.as_str()),
+        FRAME_EQ => match to.as_str() {
+            FRAME_MOON_IAU => {
+                frame_conv!(x, y, z, jd, EquatorialMeanJ2000 => MoonIauMeanEarth)
+            }
+            other => to_frame_inner!(x, y, z, jd, other, EquatorialMeanJ2000),
+        },
+        FRAME_ICRS => match to.as_str() {
+            FRAME_MOON_IAU => frame_conv!(x, y, z, jd, frames::ICRS => MoonIauMeanEarth),
+            other => to_frame_inner!(x, y, z, jd, other, frames::ICRS),
+        },
+        FRAME_ICRF => match to.as_str() {
+            // No direct ICRF ↔ MoonIauMeanEarth provider; compose via ICRS.
+            FRAME_MOON_IAU => {
+                let (ix, iy, iz) = frame_conv!(x, y, z, jd, frames::ICRF => frames::ICRS)?;
+                convert_frame(ix, iy, iz, FRAME_ICRS, FRAME_MOON_IAU, jd)
+            }
+            other => to_frame_inner!(x, y, z, jd, other, frames::ICRF),
+        },
+        FRAME_EMOD => to_frame_from_time_dep!(x, y, z, jd, to.as_str(), EquatorialMeanOfDate),
+        FRAME_ETOD => to_frame_from_time_dep!(x, y, z, jd, to.as_str(), EquatorialTrueOfDate),
+        FRAME_MOON_IAU => to_frame_from_moon!(x, y, z, jd, to.as_str()),
         _ => Err(PyValueError::new_err(format!(
             "Unknown source frame '{}'",
             from
@@ -172,7 +221,7 @@ macro_rules! center_conv {
     }};
 }
 
-fn convert_center_ecl(
+pub(crate) fn convert_center_ecl(
     x: f64,
     y: f64,
     z: f64,
@@ -186,10 +235,16 @@ fn convert_center_ecl(
     match (from_center, to_center) {
         (CENTER_BARY, CENTER_HELIO) => center_conv!(x, y, z, jd, Barycentric => Heliocentric),
         (CENTER_BARY, CENTER_GEO) => center_conv!(x, y, z, jd, Barycentric => Geocentric),
+        (CENTER_BARY, CENTER_SELENO) => center_conv!(x, y, z, jd, Barycentric => Selenocentric),
         (CENTER_HELIO, CENTER_BARY) => center_conv!(x, y, z, jd, Heliocentric => Barycentric),
         (CENTER_HELIO, CENTER_GEO) => center_conv!(x, y, z, jd, Heliocentric => Geocentric),
+        (CENTER_HELIO, CENTER_SELENO) => center_conv!(x, y, z, jd, Heliocentric => Selenocentric),
         (CENTER_GEO, CENTER_BARY) => center_conv!(x, y, z, jd, Geocentric => Barycentric),
         (CENTER_GEO, CENTER_HELIO) => center_conv!(x, y, z, jd, Geocentric => Heliocentric),
+        (CENTER_GEO, CENTER_SELENO) => center_conv!(x, y, z, jd, Geocentric => Selenocentric),
+        (CENTER_SELENO, CENTER_BARY) => center_conv!(x, y, z, jd, Selenocentric => Barycentric),
+        (CENTER_SELENO, CENTER_HELIO) => center_conv!(x, y, z, jd, Selenocentric => Heliocentric),
+        (CENTER_SELENO, CENTER_GEO) => center_conv!(x, y, z, jd, Selenocentric => Geocentric),
         _ => Err(PyValueError::new_err(format!(
             "Unsupported center conversion: {} -> {}",
             from_center, to_center
@@ -198,7 +253,7 @@ fn convert_center_ecl(
 }
 
 /// Center transform for any frame: converts to ECL, shifts center, converts back.
-fn convert_center(
+pub(crate) fn convert_center(
     x: f64,
     y: f64,
     z: f64,
@@ -210,13 +265,14 @@ fn convert_center(
     if from_center == to_center {
         return Ok((x, y, z));
     }
+    let frame = canonicalize_frame(frame)?;
     // Convert to ECL frame if needed
-    let (ecl_x, ecl_y, ecl_z) = convert_frame(x, y, z, frame, FRAME_ECL, jd)?;
+    let (ecl_x, ecl_y, ecl_z) = convert_frame(x, y, z, &frame, FRAME_ECL, jd)?;
     // Apply center shift in ECL
     let (out_x, out_y, out_z) =
         convert_center_ecl(ecl_x, ecl_y, ecl_z, from_center, to_center, jd)?;
     // Convert back to original frame
-    convert_frame(out_x, out_y, out_z, FRAME_ECL, frame, jd)
+    convert_frame(out_x, out_y, out_z, FRAME_ECL, &frame, jd)
 }
 
 // =============================================================================
@@ -286,10 +342,15 @@ impl PyPosition {
     #[new]
     #[pyo3(signature = (x, y, z, frame = "EclipticMeanJ2000", center = "Heliocentric", unit = "au"))]
     fn new(x: f64, y: f64, z: f64, frame: &str, center: &str, unit: &str) -> PyResult<Self> {
-        validate_frame(frame)?;
+        let frame = canonicalize_frame(frame)?;
         validate_center(center)?;
         validate_unit(unit)?;
-        Ok(Self::new_internal(x, y, z, frame, center, unit))
+        for (name, value) in [("x", x), ("y", y), ("z", z)] {
+            if !value.is_finite() {
+                return Err(PyValueError::new_err(format!("{name} must be finite")));
+            }
+        }
+        Ok(Self::new_internal(x, y, z, &frame, center, unit))
     }
 
     // ── Component access ────────────────────────────────────────────
@@ -361,16 +422,16 @@ impl PyPosition {
     /// Returns:
     ///     New Position in the target frame (same center and unit).
     fn to_frame(&self, target_frame: &str, jd: f64) -> PyResult<PyPosition> {
-        validate_frame(target_frame)?;
+        let target_frame = canonicalize_frame(target_frame)?;
         let jd = JulianDate::new(jd);
         let (ax, ay, az) = self.to_au();
-        let (rx, ry, rz) = convert_frame(ax, ay, az, &self.frame, target_frame, jd)?;
+        let (rx, ry, rz) = convert_frame(ax, ay, az, &self.frame, &target_frame, jd)?;
         let (ox, oy, oz) = self.coordinates_from_au(rx, ry, rz, &self.unit);
         Ok(PyPosition::new_internal(
             ox,
             oy,
             oz,
-            target_frame,
+            &target_frame,
             &self.center,
             &self.unit,
         ))
@@ -411,20 +472,20 @@ impl PyPosition {
     /// Returns:
     ///     New Position in the target frame and center.
     fn transform(&self, target_frame: &str, target_center: &str, jd: f64) -> PyResult<PyPosition> {
-        validate_frame(target_frame)?;
+        let target_frame = canonicalize_frame(target_frame)?;
         validate_center(target_center)?;
         let jd_val = JulianDate::new(jd);
         let (ax, ay, az) = self.to_au();
         // Center shift first (in source frame), then frame rotation
         let (cx, cy, cz) =
             convert_center(ax, ay, az, &self.frame, &self.center, target_center, jd_val)?;
-        let (rx, ry, rz) = convert_frame(cx, cy, cz, &self.frame, target_frame, jd_val)?;
+        let (rx, ry, rz) = convert_frame(cx, cy, cz, &self.frame, &target_frame, jd_val)?;
         let (ox, oy, oz) = self.coordinates_from_au(rx, ry, rz, &self.unit);
         Ok(PyPosition::new_internal(
             ox,
             oy,
             oz,
-            target_frame,
+            &target_frame,
             target_center,
             &self.unit,
         ))
@@ -538,10 +599,9 @@ impl PyPosition {
                 .ok_or_else(|| PyValueError::new_err(format!("missing key '{}'", k)))?
                 .extract()
         };
-        let frame = get_str("frame")?;
+        let frame = canonicalize_frame(&get_str("frame")?)?;
         let center = get_str("center")?;
         let unit = get_str("unit")?;
-        validate_frame(&frame)?;
         validate_center(&center)?;
         validate_unit(&unit)?;
         Ok(Self::new_internal(
@@ -613,14 +673,23 @@ impl PySphericalPosition {
         center: &str,
         unit: &str,
     ) -> PyResult<Self> {
-        validate_frame(frame)?;
+        let frame = canonicalize_frame(frame)?;
         validate_center(center)?;
         validate_unit(unit)?;
+        for (name, value) in [
+            ("lon_deg", lon_deg),
+            ("lat_deg", lat_deg),
+            ("distance", distance),
+        ] {
+            if !value.is_finite() {
+                return Err(PyValueError::new_err(format!("{name} must be finite")));
+            }
+        }
         Ok(Self {
             lon_deg,
             lat_deg,
             distance,
-            frame: frame.to_string(),
+            frame,
             center: center.to_string(),
             unit: unit.to_string(),
         })
@@ -738,10 +807,9 @@ impl PySphericalPosition {
                 .ok_or_else(|| PyValueError::new_err(format!("missing key '{}'", k)))?
                 .extract()
         };
-        let frame = get_str("frame")?;
+        let frame = canonicalize_frame(&get_str("frame")?)?;
         let center = get_str("center")?;
         let unit = get_str("unit")?;
-        validate_frame(&frame)?;
         validate_center(&center)?;
         validate_unit(&unit)?;
         Ok(Self {

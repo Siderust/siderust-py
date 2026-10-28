@@ -18,6 +18,7 @@ FRAMES = [
     "EquatorialMeanJ2000",
     "EquatorialMeanOfDate",
     "EquatorialTrueOfDate",
+    "MoonIauMeanEarth",
 ]
 
 

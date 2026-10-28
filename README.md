@@ -22,8 +22,11 @@ interoperability. The Python package is imported as `siderust`.
 
 - **Rust-backed astronomy** with Python orchestration and Pythonic result types
 - **Observers and observing sites**, including predefined major observatories
+- **Lunar surface observers** with geometric Alt/Az for ICRS directions and
+  finite-distance selenocentric targets (Siderust 0.16)
 - **Solar-system bodies and stars** with altitude and azimuth queries
-- **Coordinate types** including directions, positions, and spherical positions
+- **Coordinate types** including directions, positions, spherical positions,
+  selenocentric centres, and lunar body-fixed frames
 - **Observation events** such as threshold crossings and culminations
 - **Visibility windows** above or below configurable altitude thresholds
 - **Twilight thresholds** for horizon, civil, nautical, and astronomical twilight
@@ -91,10 +94,11 @@ print(f"Vega altitude: {altitude:.2f}°")
 | Area | Main API |
 |------|----------|
 | **Observers** | `Observer`, predefined observatories |
+| **Lunar surface** | `LunarObserver`, `LunarObservation` |
 | **Solar system** | `Body`, `Orbit`, `Comet`, `RuntimeEphemeris` |
 | **Stars and targets** | `Star`, `Target`, `ProperMotion`, `apply_proper_motion()` |
 | **Coordinates** | `direction.ICRS`, `direction.Horizontal`, `Position`, `SphericalPosition` |
-| **Altitude / azimuth** | `altitude_at()`, `azimuth_at()` |
+| **Altitude / azimuth** | `altitude_at()`, `azimuth_at()`, lunar `observe_direction` / `observe_position` |
 | **Visibility** | `above_threshold()`, `below_threshold()` |
 | **Events** | `crossings()`, `culminations()`, `intersect_periods()` |
 | **Moon phase** | `moon_phase()`, `find_moon_phases()` |
@@ -120,6 +124,22 @@ print(observer.lon_deg)
 print(observer.lat_deg)
 print(observer.height_m)
 ```
+
+### Lunar surface Alt/Az
+
+```python
+from siderust import LunarObserver
+from siderust.direction import ICRS
+
+site = LunarObserver(lon_deg=20.0, lat_deg=-3.5)
+hz = site.observe_direction(ICRS(0.0, 90.0), jd_tt=2451545.0)
+print(hz.alt_deg, hz.az_deg)
+```
+
+Longitude is east-positive on the IAU mean sphere (R = 1737.4 km). Epochs are
+Julian Date TT. Results are geometric only. See
+[doc/lunar_surface.md](doc/lunar_surface.md) and
+[examples/14_lunar_surface_altaz.py](examples/14_lunar_surface_altaz.py).
 
 ### Bodies and stars
 
@@ -217,6 +237,7 @@ The repository includes runnable examples covering the larger API surface:
 - [Serialization](examples/11_serialization.py)
 - [Runtime ephemerides](examples/12_runtime_ephemeris.py)
 - [Coordinate operations](examples/13_coordinate_operations.py)
+- [Lunar surface Alt/Az](examples/14_lunar_surface_altaz.py)
 
 ## Rust / PyO3 interoperability
 
@@ -229,7 +250,7 @@ Add the published interoperability crate to a Rust extension:
 ```toml
 [dependencies]
 pyo3 = "0.30"
-siderust-py = "0.6"
+siderust-py = "0.7"
 ```
 
 The public bridge lives under `siderust_py::interop` and uses a versioned,
