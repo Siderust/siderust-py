@@ -41,6 +41,8 @@ class TestModuleExports:
     def test_all_exports(self):
         expected = {
             "Observer",
+            "LunarObserver",
+            "LunarObservation",
             "Body",
             "Star",
             "direction",

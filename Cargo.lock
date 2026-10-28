@@ -611,9 +611,9 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "siderust"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e0695c5368be58fcba01975724d532003cc23475820a70b79a6c27efe001cc6"
+checksum = "176fd8196a017f3cd5898ebdd44689fbe30597c220fe6629363e73cba9921f24"
 dependencies = [
  "affn",
  "cheby",
@@ -653,7 +653,7 @@ dependencies = [
 
 [[package]]
 name = "siderust-py"
-version = "0.6.0"
+version = "0.7.0"
 dependencies = [
  "affn",
  "approx",

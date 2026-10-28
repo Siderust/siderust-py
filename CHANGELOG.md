@@ -7,17 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-28
+
 ### Added
 
-- Add citation metadata for the Python bindings and guidance to cite the core
+- Lunar-surface observer bindings (`LunarObserver`, `LunarObservation`) wrapping
+  Rust `SurfaceSite<Moon>` geometric Alt/Az for ICRS directions, finite-distance
+  positions, and Earth/Sun from a lunar site ([#17](https://github.com/Siderust/siderust-py/issues/17)).
+- Selenocentric centre and `MoonIauMeanEarth` body-fixed frame support on
+  `Position` / `SphericalPosition`, with `MoonPrincipalAxes` accepted as the
+  documented legacy alias for NAIF `IAU_MOON` Mean-Earth (not JPL DE `MOON_PA`).
+- Scientific validation tests mirroring Siderust v0.16.0 body-surface references
+  (including offline CSPICE composite Alt/Az) and example
+  `examples/14_lunar_surface_altaz.py`.
+- Documentation for lunar-surface conventions in `doc/lunar_surface.md`.
+- Citation metadata for the Python bindings and guidance to cite the core
   Siderust library and underlying scientific models and datasets.
 - Publish a GitHub Release for each successful version-tagged PyPI/crates.io
   release, with version-matched CHANGELOG notes and safe reruns.
 
 ### Changed
 
+- Upgrade the Rust dependency to published `siderust` 0.16.0 (lunar surface
+  geometry, selenocentric centres, and IAU Moon orientation fixes).
+- Synchronize the Rust crate and Python distribution versions at 0.7.0.
+- Document the Siderust compatibility baseline as `0.16.x` for interop consumers.
 - Show the Python distribution's PyPI version in the README badge, while
   keeping docs.rs for the Rust interoperability crate.
+
+### Fixed
+
+- Make `LunarObserver` equality exact and hash-consistent (including signed zeros
+  and longitude-normalized equivalents), restoring the Python `a == b ⇒ hash(a)
+  == hash(b)` invariant.
+- Normalize ICRS observation vectors with a max-abs scale so extreme but finite
+  magnitudes (e.g. `1e±200`) do not overflow or underflow.
+- Route `Position.from_dict` / `SphericalPosition.from_dict` through the public
+  constructors so non-finite coordinates cannot bypass validation.
 
 ## [0.6.0] - 2026-10-26
 

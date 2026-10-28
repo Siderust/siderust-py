@@ -7,7 +7,7 @@ installed Python package.
 
 ## Supported baseline
 
-- Siderust: `0.15.x`
+- Siderust: `0.16.x`
 - qtty: `0.8.x`
 - tempoch: `0.11.x`
 - affn: `0.12.x`
@@ -65,7 +65,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.30"
-siderust-py = "0.6"
+siderust-py = "0.7"
 tempoch-py = "0.5"
 ```
 
@@ -148,16 +148,17 @@ fn copy_horizontal(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Py<PyAn
 
 ## Coordinated release and downstream validation
 
-Siderust 0.15.0, Tempoch 0.11.1, Affn 0.12.1 and PyO3 0.30.1 are published
+Siderust 0.16.0, Tempoch 0.11.1, Affn 0.12.1 and PyO3 0.30.1 are published
 upstream dependencies. Both bridges use the same provider identities; do not
-combine the 0.4 Rust bridges with the 0.5 graph. PyO3 0.30 requires Python 3.9+
+combine the 0.4 Rust bridges with the 0.5+ graph. PyO3 0.30 requires Python 3.9+
 and Rust 1.85+. This project retains its existing Python 3.9–3.14 matrix.
 
-Tempoch's 0.11 upgrade changes its Affn identity; Siderust 0.15 changes its
-public Affn identity as well. The canonical observer, direction and typed time
+Tempoch's 0.11 upgrade changes its Affn identity; Siderust 0.15/0.16 share the
+public Affn 0.12.1 identity. The canonical observer, direction and typed time
 APIs remain usable without casts or conversion wrappers. PyO3 0.30 removes
 the deprecated `skip_from_py_object` attribute, so downstream extensions must
-remove that attribute during migration.
+remove that attribute during migration. Lunar surface types are Python-only in
+0.7 and are not part of the cross-extension bridge protocol (still version 2).
 
 The downstream fixture links both bridges and explicitly assigns Tempoch
 conversion results to `siderust::time::Time<UTC>` and `Period<UTC>`. Its Python
@@ -165,13 +166,11 @@ tests exercise UTC offset normalization, subsecond precision and rejection of
 naive datetimes alongside the canonical Observer/ICRS contract. The
 bridge-contract job runs on Linux, macOS and Windows.
 
-For this release, both the Rust crate and Python package remain at 0.6.0.
-Consumers of 0.5 must replace `DirectionParts` with `IcrsParts`,
-`direction_{from,to}_python` with `icrs_{from,to}_python`, and
-`direction_parts_from_python` with `icrs_parts_from_python`. Horizontal uses
-`HorizontalParts`, `horizontal_{from,to}_python` and
-`horizontal_parts_from_python`. Never register copies of the private wrappers.
-The Python migration is documented in [the direction API](../direction.md).
+For this release, both the Rust crate and Python package are at 0.7.0 with
+Siderust 0.16.x. Bridge protocol 2 (`IcrsParts`, `HorizontalParts`, Observer
+hooks) is unchanged from 0.6. Never register copies of the private wrappers.
+The Python direction migration is documented in [the direction API](../direction.md);
+lunar surface usage is in [lunar surface Alt/Az](../lunar_surface.md).
 
 Both release pipelines validate rebuilt source distributions outside the
 checkout, then validate wheel/sdist metadata before crates.io publication.
