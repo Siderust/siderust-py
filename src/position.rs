@@ -587,6 +587,9 @@ impl PyPosition {
     }
 
     /// Create from a dictionary.
+    ///
+    /// Delegates to [`Self::new`] so non-finite coordinates and invalid
+    /// frame/center/unit metadata are rejected the same way as construction.
     #[staticmethod]
     fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
         let get_f64 = |k: &str| -> PyResult<f64> {
@@ -599,19 +602,14 @@ impl PyPosition {
                 .ok_or_else(|| PyValueError::new_err(format!("missing key '{}'", k)))?
                 .extract()
         };
-        let frame = canonicalize_frame(&get_str("frame")?)?;
-        let center = get_str("center")?;
-        let unit = get_str("unit")?;
-        validate_center(&center)?;
-        validate_unit(&unit)?;
-        Ok(Self::new_internal(
+        Self::new(
             get_f64("x")?,
             get_f64("y")?,
             get_f64("z")?,
-            &frame,
-            &center,
-            &unit,
-        ))
+            &get_str("frame")?,
+            &get_str("center")?,
+            &get_str("unit")?,
+        )
     }
 
     fn __reduce__(&self, py: Python<'_>) -> PyResult<(Py<PyAny>, PositionReduceArgs)> {
@@ -795,6 +793,9 @@ impl PySphericalPosition {
     }
 
     /// Create from a dictionary.
+    ///
+    /// Delegates to [`Self::new`] so non-finite angles/distance and invalid
+    /// frame/center/unit metadata are rejected the same way as construction.
     #[staticmethod]
     fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
         let get_f64 = |k: &str| -> PyResult<f64> {
@@ -807,19 +808,14 @@ impl PySphericalPosition {
                 .ok_or_else(|| PyValueError::new_err(format!("missing key '{}'", k)))?
                 .extract()
         };
-        let frame = canonicalize_frame(&get_str("frame")?)?;
-        let center = get_str("center")?;
-        let unit = get_str("unit")?;
-        validate_center(&center)?;
-        validate_unit(&unit)?;
-        Ok(Self {
-            lon_deg: get_f64("lon_deg")?,
-            lat_deg: get_f64("lat_deg")?,
-            distance: get_f64("distance")?,
-            frame,
-            center,
-            unit,
-        })
+        Self::new(
+            get_f64("lon_deg")?,
+            get_f64("lat_deg")?,
+            get_f64("distance")?,
+            &get_str("frame")?,
+            &get_str("center")?,
+            &get_str("unit")?,
+        )
     }
 
     fn __reduce__(&self, py: Python<'_>) -> PyResult<(Py<PyAny>, PositionReduceArgs)> {

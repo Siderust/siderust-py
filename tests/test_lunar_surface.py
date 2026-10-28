@@ -9,10 +9,11 @@ CSPICE composite constants come from the upstream offline validation
 from __future__ import annotations
 
 import math
+import pickle
 
 import pytest
 
-from siderust import Body, LunarObserver, Observer, Position
+from siderust import Body, LunarObserver, Observer, Position, SphericalPosition
 from siderust.direction import ICRS, Horizontal
 
 J2000_TT = 2_451_545.0
@@ -25,6 +26,11 @@ def assert_near(actual: float, expected: float, tol: float, label: str) -> None:
 def angular_delta_deg(a: float, b: float) -> float:
     d = abs(a - b) % 360.0
     return min(d, 360.0 - d)
+
+
+def assert_horizontal_close(a, b, alt_tol: float = 1e-9, az_tol: float = 1e-9) -> None:
+    assert_near(a.alt_deg, b.alt_deg, alt_tol, "alt")
+    assert angular_delta_deg(a.az_deg, b.az_deg) < az_tol
 
 
 class TestLunarObserverConstruction:
@@ -63,6 +69,56 @@ class TestLunarObserverConstruction:
     def test_dict_roundtrip(self):
         site = LunarObserver(15.0, 42.0, 100.0)
         assert LunarObserver.from_dict(site.to_dict()) == site
+
+
+class TestLunarObserverEqualityHash:
+    """Exact equality must agree with hashing (Python data-model invariant)."""
+
+    def test_equal_observers_share_hash(self):
+        a = LunarObserver(20.0, -3.5, 0.0)
+        b = LunarObserver(20.0, -3.5, 0.0)
+        assert a == b
+        assert hash(a) == hash(b)
+
+    def test_approximate_neighbours_are_not_equal(self):
+        # Regression: former approx __eq__ would accept 1e-7 height diffs while
+        # __hash__ used exact bits, violating a == b ⇒ hash(a) == hash(b).
+        a = LunarObserver(20.0, -3.5, 0.0)
+        b = LunarObserver(20.0, -3.5, 1e-7)
+        assert a != b
+        assert hash(a) != hash(b)
+
+    def test_different_observers(self):
+        a = LunarObserver(20.0, -3.5, 0.0)
+        b = LunarObserver(21.0, -3.5, 0.0)
+        assert a != b
+
+    def test_signed_zero_equality_and_hash(self):
+        pos = LunarObserver(0.0, 0.0, 0.0)
+        neg = LunarObserver(-0.0, -0.0, -0.0)
+        assert pos == neg
+        assert hash(pos) == hash(neg)
+
+    def test_normalized_longitude_equivalence(self):
+        east = LunarObserver(190.0, 0.0, 0.0)
+        west = LunarObserver(-170.0, 0.0, 0.0)
+        assert east.lon_deg == pytest.approx(-170.0)
+        assert east == west
+        assert hash(east) == hash(west)
+
+    def test_dict_and_set_membership(self):
+        site = LunarObserver(20.0, -3.5, 12.0)
+        twin = LunarObserver(20.0, -3.5, 12.0)
+        mapping = {site: "ok"}
+        assert mapping[twin] == "ok"
+        assert twin in {site}
+
+    def test_pickle_roundtrip(self):
+        site = LunarObserver(15.0, 42.0, 100.0)
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            restored = pickle.loads(pickle.dumps(site, protocol=protocol))
+            assert restored == site
+            assert hash(restored) == hash(site)
 
 
 class TestSelenocentricCoordinates:
@@ -139,6 +195,166 @@ class TestLunarDirectionAltAz:
         site = LunarObserver(0.0, 0.0)
         with pytest.raises(ValueError, match="jd_tt"):
             site.observe_icrs_vector(0.0, 0.0, 1.0, float("nan"))
+
+    def test_extreme_magnitude_scalar_multiples_agree(self):
+        site = LunarObserver(20.0, -3.5)
+        v = (1.0, 2.0, 3.0)
+        ref = site.observe_icrs_vector(*v, J2000_TT)
+        for scale in (1e-200, 1e-100, 1e100, 1e200):
+            scaled = tuple(c * scale for c in v)
+            hz = site.observe_icrs_vector(*scaled, J2000_TT)
+            assert_horizontal_close(hz, ref, alt_tol=1e-9, az_tol=1e-9)
+
+    def test_axis_aligned_extreme_magnitudes(self):
+        site = LunarObserver(20.0, -3.5)
+        for axis in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)):
+            ref = site.observe_icrs_vector(*axis, J2000_TT)
+            for scale in (1e-200, 1e200):
+                hz = site.observe_icrs_vector(*(c * scale for c in axis), J2000_TT)
+                assert_horizontal_close(hz, ref)
+
+    def test_rejects_nan_and_infinity_components(self):
+        site = LunarObserver(0.0, 0.0)
+        for bad in (float("nan"), float("inf"), float("-inf")):
+            with pytest.raises(ValueError, match="finite"):
+                site.observe_icrs_vector(bad, 0.0, 0.0, J2000_TT)
+            with pytest.raises(ValueError, match="finite"):
+                site.observe_icrs_vector(0.0, bad, 0.0, J2000_TT)
+            with pytest.raises(ValueError, match="finite"):
+                site.observe_icrs_vector(0.0, 0.0, bad, J2000_TT)
+
+    def test_vector_matches_icrs_direction_object(self):
+        site = LunarObserver(20.0, -3.5)
+        # RA=0°, Dec=0° → Cartesian ≈ (1, 0, 0)
+        spherical = site.observe_direction(ICRS(0.0, 0.0), J2000_TT)
+        cartesian = site.observe_icrs_vector(1.0, 0.0, 0.0, J2000_TT)
+        assert_horizontal_close(spherical, cartesian)
+
+
+class TestPositionDeserializationValidation:
+    """from_dict must enforce the same invariants as the public constructors."""
+
+    def test_position_from_dict_rejects_non_finite(self):
+        base = {
+            "x": 1.0,
+            "y": 0.0,
+            "z": 0.0,
+            "frame": "ICRS",
+            "center": "Selenocentric",
+            "unit": "km",
+        }
+        for key in ("x", "y", "z"):
+            for bad in (float("nan"), float("inf"), float("-inf")):
+                payload = dict(base)
+                payload[key] = bad
+                with pytest.raises(ValueError, match="finite"):
+                    Position.from_dict(payload)
+
+    def test_spherical_from_dict_rejects_non_finite(self):
+        base = {
+            "lon_deg": 10.0,
+            "lat_deg": 20.0,
+            "distance": 1.0,
+            "frame": "ICRS",
+            "center": "Selenocentric",
+            "unit": "au",
+        }
+        for key in ("lon_deg", "lat_deg", "distance"):
+            for bad in (float("nan"), float("inf"), float("-inf")):
+                payload = dict(base)
+                payload[key] = bad
+                with pytest.raises(ValueError, match="finite"):
+                    SphericalPosition.from_dict(payload)
+
+    def test_from_dict_missing_keys(self):
+        with pytest.raises(ValueError, match="missing"):
+            Position.from_dict({"x": 1.0, "y": 0.0, "z": 0.0})
+        with pytest.raises(ValueError, match="missing"):
+            SphericalPosition.from_dict({"lon_deg": 0.0, "lat_deg": 0.0})
+
+    def test_from_dict_invalid_frame_center_unit(self):
+        with pytest.raises(ValueError, match="Unknown frame"):
+            Position.from_dict(
+                {
+                    "x": 1.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "frame": "MOON_PA_DE",
+                    "center": "Selenocentric",
+                    "unit": "km",
+                }
+            )
+        with pytest.raises(ValueError, match="Unknown center"):
+            Position.from_dict(
+                {
+                    "x": 1.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "frame": "ICRS",
+                    "center": "Martian",
+                    "unit": "km",
+                }
+            )
+        with pytest.raises(ValueError, match="Unknown unit"):
+            Position.from_dict(
+                {
+                    "x": 1.0,
+                    "y": 0.0,
+                    "z": 0.0,
+                    "frame": "ICRS",
+                    "center": "Selenocentric",
+                    "unit": "m",
+                }
+            )
+
+    def test_position_dict_roundtrip_and_alias(self):
+        original = Position(
+            1.0,
+            2.0,
+            3.0,
+            frame="MoonPrincipalAxes",
+            center="Selenocentric",
+            unit="km",
+        )
+        restored = Position.from_dict(original.to_dict())
+        assert restored.frame == "MoonIauMeanEarth"
+        assert restored.x == original.x
+        assert restored.center == original.center
+        aliased = Position.from_dict(
+            {
+                "x": 1.0,
+                "y": 0.0,
+                "z": 0.0,
+                "frame": "MoonPrincipalAxes",
+                "center": "Selenocentric",
+                "unit": "km",
+            }
+        )
+        assert aliased.frame == "MoonIauMeanEarth"
+
+    def test_spherical_dict_roundtrip_and_pickle(self):
+        sph = SphericalPosition(
+            30.0,
+            -10.0,
+            2.0,
+            frame="MoonIauMeanEarth",
+            center="Selenocentric",
+            unit="km",
+        )
+        restored = SphericalPosition.from_dict(sph.to_dict())
+        assert restored.lon_deg == sph.lon_deg
+        assert restored.frame == sph.frame
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            pickled = pickle.loads(pickle.dumps(sph, protocol=protocol))
+            assert pickled.lon_deg == sph.lon_deg
+            assert pickled.frame == sph.frame
+
+    def test_position_pickle_roundtrip(self):
+        pos = Position(1.0, 0.0, 0.0, frame="ICRS", center="Selenocentric", unit="km")
+        for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+            restored = pickle.loads(pickle.dumps(pos, protocol=protocol))
+            assert restored.x == pos.x
+            assert restored.frame == pos.frame
 
 
 class TestMoonBodyFixedCardinals:

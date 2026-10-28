@@ -51,23 +51,45 @@ fn require_finite_jd(jd_tt: f64) -> PyResult<JulianDate> {
     Ok(JulianDate::new(jd_tt))
 }
 
+/// Normalize a finite nonzero ICRS vector without overflow/underflow.
+///
+/// Scales by the maximum absolute component before forming the Euclidean
+/// norm so extreme but finite magnitudes (e.g. `1e±200`) remain usable.
+/// Affn/`Direction::try_new` use an unscaled magnitude and would reject or
+/// overflow these cases, so this binding keeps a local scale-invariant path.
 fn normalize_icrs_direction(x: f64, y: f64, z: f64) -> PyResult<Direction<ICRS>> {
     for (name, value) in [("x", x), ("y", y), ("z", z)] {
         if !value.is_finite() {
             return Err(PyValueError::new_err(format!("{name} must be finite")));
         }
     }
-    let norm = (x * x + y * y + z * z).sqrt();
+    let scale = x.abs().max(y.abs()).max(z.abs());
+    if scale == 0.0 {
+        return Err(PyValueError::new_err(
+            "ICRS direction must be a non-zero finite vector",
+        ));
+    }
+    let (sx, sy, sz) = (x / scale, y / scale, z / scale);
+    let norm = (sx * sx + sy * sy + sz * sz).sqrt();
     if !norm.is_finite() || norm == 0.0 {
         return Err(PyValueError::new_err(
             "ICRS direction must be a non-zero finite vector",
         ));
     }
     Ok(Direction::<ICRS>::new_unchecked(
-        x / norm,
-        y / norm,
-        z / norm,
+        sx / norm,
+        sy / norm,
+        sz / norm,
     ))
+}
+
+/// Hash bits that agree with Python/`f64` equality for signed zeros.
+fn hashable_float(value: f64) -> u64 {
+    if value == 0.0 {
+        0
+    } else {
+        value.to_bits()
+    }
 }
 
 fn to_horizontal(alt: Degrees, az: Degrees) -> PyHorizontal {
@@ -397,19 +419,25 @@ impl PyLunarObserver {
         self.__repr__()
     }
 
+    /// Exact equality of the validated site coordinates.
+    ///
+    /// Compares the stored (already longitude-normalized) values with IEEE-754
+    /// equality, so `+0.0` equals `-0.0`. Approximate tolerances are not used:
+    /// they are not transitive and break the `a == b ⇒ hash(a) == hash(b)`
+    /// invariant required of hashable Python objects.
     fn __eq__(&self, other: &PyLunarObserver) -> bool {
-        (self.lon_deg() - other.lon_deg()).abs() < 1e-10
-            && (self.lat_deg() - other.lat_deg()).abs() < 1e-10
-            && (self.height_m() - other.height_m()).abs() < 1e-6
+        self.lon_deg() == other.lon_deg()
+            && self.lat_deg() == other.lat_deg()
+            && self.height_m() == other.height_m()
     }
 
     fn __hash__(&self) -> u64 {
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
         let mut hasher = DefaultHasher::new();
-        self.lon_deg().to_bits().hash(&mut hasher);
-        self.lat_deg().to_bits().hash(&mut hasher);
-        self.height_m().to_bits().hash(&mut hasher);
+        hashable_float(self.lon_deg()).hash(&mut hasher);
+        hashable_float(self.lat_deg()).hash(&mut hasher);
+        hashable_float(self.height_m()).hash(&mut hasher);
         hasher.finish()
     }
 
@@ -519,5 +547,52 @@ mod tests {
     fn moon_principal_axes_alias_canonicalizes() {
         let frame = canonicalize_frame("MoonPrincipalAxes").unwrap();
         assert_eq!(frame, FRAME_MOON_IAU);
+    }
+
+    #[test]
+    fn normalize_survives_extreme_finite_magnitudes() {
+        let ref_dir = normalize_icrs_direction(1.0, 2.0, 3.0).unwrap();
+        for scale in [1e-200_f64, 1e200_f64] {
+            let dir = normalize_icrs_direction(1.0 * scale, 2.0 * scale, 3.0 * scale).unwrap();
+            assert_abs_diff_eq!(dir.x(), ref_dir.x(), epsilon = 1e-12);
+            assert_abs_diff_eq!(dir.y(), ref_dir.y(), epsilon = 1e-12);
+            assert_abs_diff_eq!(dir.z(), ref_dir.z(), epsilon = 1e-12);
+        }
+        assert!(normalize_icrs_direction(0.0, 0.0, 0.0).is_err());
+        assert!(normalize_icrs_direction(f64::NAN, 0.0, 0.0).is_err());
+        assert!(normalize_icrs_direction(f64::INFINITY, 0.0, 0.0).is_err());
+    }
+
+    #[test]
+    fn equality_matches_hash_for_exact_and_signed_zero() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        fn hash_bits(obs: &PyLunarObserver) -> u64 {
+            // Mirror __hash__ through public equality-relevant getters.
+            let mut hasher = DefaultHasher::new();
+            hashable_float(obs.lon_deg()).hash(&mut hasher);
+            hashable_float(obs.lat_deg()).hash(&mut hasher);
+            hashable_float(obs.height_m()).hash(&mut hasher);
+            hasher.finish()
+        }
+
+        let a = PyLunarObserver::new(20.0, -3.5, 0.0).unwrap();
+        let b = PyLunarObserver::new(20.0, -3.5, 0.0).unwrap();
+        assert!(a.__eq__(&b));
+        assert_eq!(hash_bits(&a), hash_bits(&b));
+
+        let near = PyLunarObserver::new(20.0, -3.5, 1e-7).unwrap();
+        assert!(!a.__eq__(&near));
+
+        let pos = PyLunarObserver::new(0.0, 0.0, 0.0).unwrap();
+        let neg = PyLunarObserver::new(-0.0, -0.0, -0.0).unwrap();
+        assert!(pos.__eq__(&neg));
+        assert_eq!(hash_bits(&pos), hash_bits(&neg));
+
+        let east = PyLunarObserver::new(190.0, 0.0, 0.0).unwrap();
+        let west = PyLunarObserver::new(-170.0, 0.0, 0.0).unwrap();
+        assert!(east.__eq__(&west));
+        assert_eq!(hash_bits(&east), hash_bits(&west));
     }
 }

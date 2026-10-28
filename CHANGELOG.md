@@ -35,6 +35,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show the Python distribution's PyPI version in the README badge, while
   keeping docs.rs for the Rust interoperability crate.
 
+### Fixed
+
+- Make `LunarObserver` equality exact and hash-consistent (including signed zeros
+  and longitude-normalized equivalents), restoring the Python `a == b ⇒ hash(a)
+  == hash(b)` invariant.
+- Normalize ICRS observation vectors with a max-abs scale so extreme but finite
+  magnitudes (e.g. `1e±200`) do not overflow or underflow.
+- Route `Position.from_dict` / `SphericalPosition.from_dict` through the public
+  constructors so non-finite coordinates cannot bypass validation.
+
 ## [0.6.0] - 2026-10-26
 
 ### Added
