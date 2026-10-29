@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-29
+
+### Added
+
+- SPICE kernel context bindings (`SpiceContext.from_kernels`, `from_paths`,
+  `from_de440`) wrapping an immutable Rust `SpiceContext` behind `Arc`
+  ([#19](https://github.com/Siderust/siderust-py/issues/19)).
+- `LunarObserver.from_spice(...)` for DE-specific `MOON_ME` / `MOON_PA` (and
+  related FK) geometric Sun/Earth observations with finite-distance parallax,
+  slant range in kilometres, and `above_horizon` semantics.
+- Height-above-IAU-sphere and actual radial-distance site constructors
+  (`height_m` / `radius_m`, mutually exclusive).
+- Exact-ET observation methods `observe_sun_et` / `observe_earth_et` for
+  same-epoch CSPICE parity; ordinary `observe_sun` / `observe_earth` keep the
+  Julian Date TT convention with explicit TT→TDB conversion.
+- Independent CSPICE DE440 fixture suite under `tests/fixtures/lunar_de440`
+  (from Siderust PR #125) and beginner example
+  `examples/15_spice_lunar_de440.py`.
+
+### Changed
+
+- Prepare dependency on Siderust **0.17.0** (SPICE lunar surface geometry from
+  PR [#125](https://github.com/Siderust/siderust/pull/125)). Until crates.io
+  publishes 0.17.0 this release branch may temporarily pin the merged git
+  revision; replace with the published crate before tagging/publishing.
+- Synchronize crate / PyPI / `__version__` metadata at 0.8.0.
+- Extend `LunarObservation` with optional provenance fields (`backend`,
+  `frame`, `frame_id`, `above_horizon`, `epoch_et_tdb_seconds`, `kernels`)
+  without breaking existing `alt_deg` / `az_deg` / `range` / `range_unit` /
+  `direction()` usage.
+
+### Fixed
+
+- Keep analytical and SPICE lunar observers scientifically distinct for
+  equality, hashing, `to_dict` / `from_dict`, and pickle (SPICE observers are
+  never silently reconstructed as analytical).
+
 ## [0.7.0] - 2026-10-28
 
 ### Added

@@ -11,5 +11,6 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = "0.30.1"
 siderust-py = { path = "../.." }
-siderust = "0.16.0"
+# Align with siderust-py 0.8 draft dependency until crates.io publishes 0.17.0.
+siderust = { version = "0.17.0", git = "https://github.com/Siderust/siderust.git", rev = "087d7cf1e98dd32231cd3d4d570a8ad300eed087" }
 tempoch-py = "0.5.0"

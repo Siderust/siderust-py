@@ -65,7 +65,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.30"
-siderust-py = "0.7"
+siderust-py = "0.8"
 tempoch-py = "0.5"
 ```
 
@@ -158,7 +158,7 @@ public Affn 0.12.1 identity. The canonical observer, direction and typed time
 APIs remain usable without casts or conversion wrappers. PyO3 0.30 removes
 the deprecated `skip_from_py_object` attribute, so downstream extensions must
 remove that attribute during migration. Lunar surface types are Python-only in
-0.7 and are not part of the cross-extension bridge protocol (still version 2).
+0.8 and are not part of the cross-extension bridge protocol (still version 2).
 
 The downstream fixture links both bridges and explicitly assigns Tempoch
 conversion results to `siderust::time::Time<UTC>` and `Period<UTC>`. Its Python
@@ -166,9 +166,10 @@ tests exercise UTC offset normalization, subsecond precision and rejection of
 naive datetimes alongside the canonical Observer/ICRS contract. The
 bridge-contract job runs on Linux, macOS and Windows.
 
-For this release, both the Rust crate and Python package are at 0.7.0 with
-Siderust 0.16.x. Bridge protocol 2 (`IcrsParts`, `HorizontalParts`, Observer
-hooks) is unchanged from 0.6. Never register copies of the private wrappers.
+For this release, both the Rust crate and Python package are at 0.8.0 with
+Siderust 0.17.x (draft until crates.io publishes 0.17.0). Bridge protocol 2
+(`IcrsParts`, `HorizontalParts`, Observer hooks) is unchanged from 0.6–0.7.
+Never register copies of the private wrappers.
 The Python direction migration is documented in [the direction API](../direction.md);
 lunar surface usage is in [lunar surface Alt/Az](../lunar_surface.md).
 

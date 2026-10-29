@@ -18,6 +18,7 @@ mod orbit;
 mod phase;
 mod position;
 mod queries;
+mod spice_context;
 mod star;
 mod target;
 
@@ -30,6 +31,7 @@ use observer::PyObserver;
 use orbit::{PyComet, PyOrbit};
 use phase::{PyMoonPhaseGeometry, PyMoonPhaseLabel, PyPhaseEvent, PyPhaseKind};
 use position::{PyPosition, PySphericalPosition};
+use spice_context::PySpiceContext;
 use star::PyStar;
 use target::{PyProperMotion, PyTarget};
 
@@ -51,6 +53,7 @@ fn _siderust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyObserver>()?;
     m.add_class::<PyLunarObserver>()?;
     m.add_class::<PyLunarObservation>()?;
+    m.add_class::<PySpiceContext>()?;
     m.add_class::<PyBody>()?;
     m.add_class::<PyStar>()?;
     m.add_class::<PyIcrs>()?;

@@ -1,6 +1,6 @@
 [package]
 name = "siderust-py"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 description = "Python bindings for siderust astrometry and astrodynamics"
 license = "AGPL-3.0"
@@ -12,7 +12,11 @@ name = "siderust_py"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-siderust = { version = "0.16.0", features = [] }
+# Draft dependency: Siderust PR #125 is merged on main as 0.17.0 metadata, but
+# crates.io has not published 0.17.0 yet. Replace with a published crates.io
+# release before merging/publishing this Python package. Never publish with a
+# git/path source.
+siderust = { version = "0.17.0", git = "https://github.com/Siderust/siderust.git", rev = "087d7cf1e98dd32231cd3d4d570a8ad300eed087", features = ["spice"] }
 affn     = { version = "0.12.1", features = ["astro"] }
 pyo3     = { version = "0.30.1" }
 
