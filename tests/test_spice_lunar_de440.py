@@ -165,6 +165,174 @@ class TestSpiceLunarObserverConstruction:
             pickle.dumps(observer)
 
 
+class TestSpiceObserverScientificIdentity:
+    """Equality/hash must key on shared Arc context, not just path aliases."""
+
+    def test_same_context_identical_observers(self):
+        spice = load_excerpt_context()
+        a = LunarObserver.from_spice(spice, "MOON_ME", 20.0, -3.5, height_m=0.0)
+        b = LunarObserver.from_spice(spice, "MOON_ME", 20.0, -3.5, height_m=0.0)
+        assert a == b
+        assert hash(a) == hash(b)
+        assert {a: "ok"}[b] == "ok"
+        assert b in {a}
+
+    def test_independently_loaded_contexts_are_distinct(self):
+        spice_a = load_excerpt_context()
+        spice_b = load_excerpt_context()
+        assert spice_a != spice_b
+        a = LunarObserver.from_spice(spice_a, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0)
+        b = LunarObserver.from_spice(spice_b, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0)
+        # Same aliases / geometry, different kernel allocations.
+        assert list(spice_a.provenance) == list(spice_b.provenance)
+        assert a != b
+        assert hash(a) != hash(b)
+
+    def test_same_basename_different_bytes_contexts_are_distinct(self, tmp_path: Path):
+        """Identical aliases must not imply equal scientific identity."""
+        dir_a = tmp_path / "a"
+        dir_b = tmp_path / "b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+        for name in (
+            "excerpt.bsp",
+            "excerpt.bpc",
+            "moon_de440_220930.tf",
+            "naif0012.tls",
+            "test_rotation.tf",
+        ):
+            data = (FIXTURES / name).read_bytes()
+            (dir_a / name).write_bytes(data)
+            (dir_b / name).write_bytes(data)
+
+        # Mutate a non-critical text FK comment in B so aliases can match via
+        # basename while loaded bytes differ; both must still parse.
+        fk_b = dir_b / "moon_de440_220930.tf"
+        fk_b.write_bytes(fk_b.read_bytes() + b"\n\\begintext\nmutated alias twin\n")
+
+        paths = [
+            "excerpt.bsp",
+            "excerpt.bpc",
+            "moon_de440_220930.tf",
+            "naif0012.tls",
+            "test_rotation.tf",
+        ]
+        spice_a = SpiceContext.from_paths([dir_a / n for n in paths])
+        spice_b = SpiceContext.from_paths([dir_b / n for n in paths])
+        a = LunarObserver.from_spice(spice_a, "MOON_ME", 0.0, 0.0, height_m=0.0)
+        b = LunarObserver.from_spice(spice_b, "MOON_ME", 0.0, 0.0, height_m=0.0)
+        assert a != b
+        assert hash(a) != hash(b)
+
+    def test_different_frames_same_context(self):
+        spice = load_excerpt_context()
+        me = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, height_m=0.0)
+        pa = LunarObserver.from_spice(spice, "MOON_PA", 0.0, 0.0, height_m=0.0)
+        assert me != pa
+
+    def test_height_versus_radial_same_context(self):
+        spice = load_excerpt_context()
+        height = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, height_m=0.0)
+        radial = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0)
+        # Same geometric sphere + height 0 vs explicit radial sphere of equal R
+        # still differ by site_kind identity.
+        assert height.site_kind != radial.site_kind
+        assert height != radial
+
+    def test_analytical_versus_spice(self):
+        spice = load_excerpt_context()
+        analytical = LunarObserver(10.0, -5.0, 0.0)
+        spice_obs = LunarObserver.from_spice(spice, "MOON_ME", 10.0, -5.0, height_m=0.0)
+        assert analytical != spice_obs
+        assert hash(analytical) != hash(spice_obs)
+
+    def test_equality_stable_after_context_gc(self):
+        spice = load_excerpt_context()
+        a = LunarObserver.from_spice(spice, "MOON_ME", 1.0, 2.0, height_m=3.0)
+        b = LunarObserver.from_spice(spice, "MOON_ME", 1.0, 2.0, height_m=3.0)
+        del spice
+        gc.collect()
+        assert a == b
+        assert hash(a) == hash(b)
+        assert a.observe_sun_et(819720000.0).range is not None
+
+
+class TestLunarObserverFromDictContract:
+    def test_legacy_three_field_dict(self):
+        restored = LunarObserver.from_dict({"lon_deg": 15.0, "lat_deg": 42.0, "height_m": 100.0})
+        assert restored == LunarObserver(15.0, 42.0, 100.0)
+        assert restored.backend == "analytical"
+
+    def test_analytical_roundtrip(self):
+        site = LunarObserver(20.0, -3.5, 12.0)
+        data = site.to_dict()
+        assert data["backend"] == "analytical"
+        assert set(data) >= {"lon_deg", "lat_deg", "height_m", "backend"}
+        assert LunarObserver.from_dict(data) == site
+
+    def test_explicit_analytical_backend(self):
+        restored = LunarObserver.from_dict(
+            {
+                "lon_deg": 0.0,
+                "lat_deg": 0.0,
+                "height_m": 0.0,
+                "backend": "analytical",
+            }
+        )
+        assert restored.backend == "analytical"
+
+    def test_rejects_spice_backend(self):
+        with pytest.raises(TypeError, match="SPICE"):
+            LunarObserver.from_dict(
+                {
+                    "lon_deg": 0.0,
+                    "lat_deg": 0.0,
+                    "height_m": 0.0,
+                    "backend": "spice",
+                }
+            )
+
+    @pytest.mark.parametrize("backend", ["de440", "custom", "unknown", ""])
+    def test_rejects_unknown_backend_strings(self, backend: str):
+        with pytest.raises(ValueError, match="unknown LunarObserver backend"):
+            LunarObserver.from_dict(
+                {
+                    "lon_deg": 0.0,
+                    "lat_deg": 0.0,
+                    "height_m": 0.0,
+                    "backend": backend,
+                }
+            )
+
+    @pytest.mark.parametrize("backend", [None, 1, 1.5, True, ["analytical"]])
+    def test_rejects_malformed_backend_types(self, backend):
+        with pytest.raises(TypeError, match="backend"):
+            LunarObserver.from_dict(
+                {
+                    "lon_deg": 0.0,
+                    "lat_deg": 0.0,
+                    "height_m": 0.0,
+                    "backend": backend,
+                }
+            )
+
+    def test_analytical_pickle_preserved(self):
+        import pickle
+
+        site = LunarObserver(15.0, 42.0, 100.0)
+        restored = pickle.loads(pickle.dumps(site))
+        assert restored == site
+        assert hash(restored) == hash(site)
+
+    def test_spice_pickle_rejected(self):
+        import pickle
+
+        spice = load_excerpt_context()
+        observer = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, height_m=0.0)
+        with pytest.raises(TypeError, match="SPICE"):
+            pickle.dumps(observer)
+
+
 class TestSpiceObservationParity:
     def test_reference_csv_exact_et(self):
         spice = load_excerpt_context()

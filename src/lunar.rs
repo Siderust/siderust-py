@@ -753,11 +753,14 @@ impl PyLunarObserver {
         d.set_item("lon_deg", self.lon_deg())?;
         d.set_item("lat_deg", self.lat_deg())?;
         d.set_item("height_m", self.height_m())?;
+        // Analytical dicts keep the 0.7 three-field contract plus an explicit
+        // backend tag. SPICE dicts add provenance metadata and are not
+        // reconstructible via from_dict.
         d.set_item("backend", self.backend())?;
-        d.set_item("frame", self.frame())?;
-        d.set_item("site_kind", self.site_kind())?;
         if let Some(backend) = &self.spice {
+            d.set_item("frame", backend.frame.as_str())?;
             d.set_item("frame_id", backend.frame_id)?;
+            d.set_item("site_kind", self.site_kind())?;
             d.set_item("radius_m", self.radius_m())?;
             d.set_item("kernels", backend.provenance.clone())?;
             d.set_item(
@@ -770,17 +773,35 @@ impl PyLunarObserver {
 
     /// Reconstruct an **analytical** observer from a dict.
     ///
-    /// SPICE-backed dicts (``backend == "spice"``) are rejected so a SPICE
-    /// observer is never silently rebuilt as analytical.
+    /// Accepts legacy 0.7 three-field dicts (no ``backend``) and current
+    /// ``backend="analytical"`` dicts. Rejects ``backend="spice"`` and any
+    /// unknown/malformed backend so an unrecognized model is never silently
+    /// reinterpreted as VSOP/ELP + IAU_MOON.
     #[staticmethod]
     fn from_dict(d: &Bound<'_, pyo3::types::PyDict>) -> PyResult<Self> {
-        if let Some(backend) = d.get_item("backend")? {
-            let backend: String = backend.extract()?;
-            if backend == BACKEND_SPICE {
+        if let Some(backend_obj) = d.get_item("backend")? {
+            if backend_obj.is_none() {
                 return Err(PyTypeError::new_err(
-                    "cannot reconstruct a SPICE LunarObserver from dict; \
-                     rebuild with LunarObserver.from_spice(context, ...)",
+                    "LunarObserver backend must be a string; got None",
                 ));
+            }
+            let backend: String = backend_obj
+                .extract()
+                .map_err(|_| PyTypeError::new_err("LunarObserver backend must be a string"))?;
+            match backend.as_str() {
+                BACKEND_ANALYTICAL => {}
+                BACKEND_SPICE => {
+                    return Err(PyTypeError::new_err(
+                        "cannot reconstruct a SPICE LunarObserver from dict; \
+                         rebuild with LunarObserver.from_spice(context, ...)",
+                    ));
+                }
+                other => {
+                    return Err(PyValueError::new_err(format!(
+                        "unknown LunarObserver backend {other:?}; \
+                         expected \"analytical\" or omit backend for legacy dicts"
+                    )));
+                }
             }
         }
         let get = |k: &str| -> PyResult<f64> {
@@ -824,9 +845,11 @@ impl PyLunarObserver {
 
     /// Exact equality of validated site coordinates and backend identity.
     ///
-    /// Analytical observers compare longitude/latitude/height. SPICE observers
-    /// also require the same frame, site kind, and kernel provenance aliases.
-    /// Analytical and SPICE observers never compare equal.
+    /// Analytical observers compare longitude/latitude/height (and reference
+    /// radius). SPICE observers also require the same frame, site kind, and
+    /// the **same shared** [`SpiceContext`] allocation (`Arc::ptr_eq`):
+    /// independently loaded contexts remain distinct even when kernel path
+    /// aliases match. Analytical and SPICE observers never compare equal.
     fn __eq__(&self, other: &PyLunarObserver) -> bool {
         if self.spice.is_some() != other.spice.is_some() {
             return false;
@@ -844,7 +867,7 @@ impl PyLunarObserver {
                 a.frame == b.frame
                     && a.frame_id == b.frame_id
                     && a.site_kind == b.site_kind
-                    && a.provenance == b.provenance
+                    && Arc::ptr_eq(&a.context, &b.context)
             }
             _ => false,
         }
@@ -863,9 +886,7 @@ impl PyLunarObserver {
             backend.frame.hash(&mut hasher);
             backend.frame_id.hash(&mut hasher);
             (backend.site_kind as u8).hash(&mut hasher);
-            for alias in &backend.provenance {
-                alias.hash(&mut hasher);
-            }
+            Arc::as_ptr(&backend.context).hash(&mut hasher);
         }
         hasher.finish()
     }

@@ -28,11 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Prepare dependency on Siderust **0.17.0** (SPICE lunar surface geometry from
-  PR [#125](https://github.com/Siderust/siderust/pull/125)). Until crates.io
-  publishes 0.17.0 this release branch may temporarily pin the merged git
-  revision; replace with the published crate before tagging/publishing.
+- Depend on published crates.io `siderust` **0.17.0** with the `spice` feature
+  (DE440 SPICE lunar surface geometry from
+  [Siderust/siderust#125](https://github.com/Siderust/siderust/pull/125)).
 - Synchronize crate / PyPI / `__version__` metadata at 0.8.0.
+- Document the Siderust compatibility baseline as `0.17.x` for interop consumers.
 - Extend `LunarObservation` with optional provenance fields (`backend`,
   `frame`, `frame_id`, `above_horizon`, `epoch_et_tdb_seconds`, `kernels`)
   without breaking existing `alt_deg` / `az_deg` / `range` / `range_unit` /
@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep analytical and SPICE lunar observers scientifically distinct for
   equality, hashing, `to_dict` / `from_dict`, and pickle (SPICE observers are
   never silently reconstructed as analytical).
+- SPICE observer equality/hashing keys on the shared `Arc<SpiceContext>`
+  allocation so independently loaded kernel configurations remain distinct
+  even when path aliases match.
+- Reject unknown or malformed `LunarObserver.from_dict` backends instead of
+  falling through to the analytical constructor.
 
 ## [0.7.0] - 2026-10-28
 

@@ -107,17 +107,22 @@ analytical-only and raise `ValueError` on SPICE observers.
 Analytical observers keep exact coordinate equality/hash semantics (including
 signed zeros and longitude normalization).
 
-SPICE observers additionally require the same frame, site kind, and kernel
-provenance aliases. Analytical and SPICE observers at the same lon/lat are
-**not** equal. `to_dict` records `backend="spice"`; `from_dict` and pickle
-refuse to reconstruct a SPICE observer as analytical.
+SPICE observers additionally require the same frame, site kind, and the **same
+shared** `SpiceContext` allocation. Independently loaded contexts remain
+distinct even when kernel path aliases match. Analytical and SPICE observers at
+the same lon/lat are **not** equal.
+
+`to_dict` for analytical sites emits the 0.7 fields plus `backend="analytical"`.
+SPICE `to_dict` records `backend="spice"` and provenance metadata; `from_dict`
+and pickle refuse to reconstruct a SPICE observer as analytical. Unknown or
+malformed `backend` values are rejected (never assumed analytical).
 
 ## Validation provenance
 
-- Analytical tests mirror Siderust v0.16+ body-surface references (CSPICE
-  composite `IAU_MOON` + independent ENU).
-- SPICE tests reuse independent CSPICE DE440 fixtures from Siderust PR #125
-  (`tests/fixtures/lunar_de440`), with exact-ET bounds:
+- Analytical tests mirror Siderust body-surface references (CSPICE composite
+  `IAU_MOON` + independent ENU).
+- SPICE tests reuse independent CSPICE DE440 fixtures from Siderust PR #125 /
+  Siderust 0.17.0 (`tests/fixtures/lunar_de440`), with exact-ET bounds:
   matrix `5e-14`, position/range `2e-7 km`, altitude/azimuth `1e-10 deg`.
 - Optional full-kernel checks: set `SIDERUST_LUNAR_KERNEL_DIR`.
 
