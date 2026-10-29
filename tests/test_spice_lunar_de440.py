@@ -96,9 +96,7 @@ class TestSpiceContext:
 class TestSpiceLunarObserverConstruction:
     def test_height_and_radial_sites(self):
         spice = load_excerpt_context()
-        height = LunarObserver.from_spice(
-            spice, "MOON_ME", 32.3, -89.0, height_m=600.0
-        )
+        height = LunarObserver.from_spice(spice, "MOON_ME", 32.3, -89.0, height_m=600.0)
         assert height.backend == "spice"
         assert height.frame == "MOON_ME"
         assert height.frame_id == 31011
@@ -107,9 +105,7 @@ class TestSpiceLunarObserverConstruction:
         assert height.radius_m is None
         assert height.equatorial_radius_m == pytest.approx(1_737_400.0)
 
-        radial = LunarObserver.from_spice(
-            spice, "MOON_ME", 32.3, -89.0, radius_m=1_738_000.0
-        )
+        radial = LunarObserver.from_spice(spice, "MOON_ME", 32.3, -89.0, radius_m=1_738_000.0)
         assert radial.site_kind == "radial"
         assert radial.radius_m == pytest.approx(1_738_000.0)
         assert radial.height_m == pytest.approx(0.0)
@@ -118,9 +114,7 @@ class TestSpiceLunarObserverConstruction:
     def test_rejects_conflicting_height_and_radius(self):
         spice = load_excerpt_context()
         with pytest.raises(ValueError, match="not both"):
-            LunarObserver.from_spice(
-                spice, "MOON_ME", 0.0, 0.0, height_m=1.0, radius_m=1_737_400.0
-            )
+            LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, height_m=1.0, radius_m=1_737_400.0)
 
     def test_rejects_invalid_frame_and_site(self):
         spice = load_excerpt_context()
@@ -143,18 +137,14 @@ class TestSpiceLunarObserverConstruction:
     def test_analytical_not_equal_spice(self):
         spice = load_excerpt_context()
         analytical = LunarObserver(0.0, 0.0, 0.0)
-        spice_obs = LunarObserver.from_spice(
-            spice, "MOON_ME", 0.0, 0.0, height_m=0.0
-        )
+        spice_obs = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, height_m=0.0)
         assert analytical != spice_obs
         assert analytical.backend == "analytical"
         assert spice_obs.backend == "spice"
 
     def test_context_lifetime_after_gc(self):
         spice = load_excerpt_context()
-        observer = LunarObserver.from_spice(
-            spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0
-        )
+        observer = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0)
         del spice
         gc.collect()
         sun = observer.observe_sun_et(819720000.0)
@@ -164,9 +154,7 @@ class TestSpiceLunarObserverConstruction:
 
     def test_serialization_guards(self):
         spice = load_excerpt_context()
-        observer = LunarObserver.from_spice(
-            spice, "MOON_ME", 10.0, -5.0, height_m=0.0
-        )
+        observer = LunarObserver.from_spice(spice, "MOON_ME", 10.0, -5.0, height_m=0.0)
         data = observer.to_dict()
         assert data["backend"] == "spice"
         with pytest.raises(TypeError, match="SPICE"):
@@ -225,9 +213,7 @@ class TestSpiceObservationParity:
                 assert list(obs.kernels)
 
         # Determinism: repeat one observation.
-        observer = LunarObserver.from_spice(
-            spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0
-        )
+        observer = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0)
         a = observer.observe_sun_et(819720000.0)
         b = observer.observe_sun_et(819720000.0)
         assert a.alt_deg == b.alt_deg
@@ -236,9 +222,7 @@ class TestSpiceObservationParity:
 
     def test_jd_tt_path_runs(self):
         spice = load_excerpt_context()
-        observer = LunarObserver.from_spice(
-            spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0
-        )
+        observer = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0)
         et_mid = 821_000_000.0  # safely inside excerpt coverage
         sun_et = observer.observe_sun_et(et_mid)
         assert math.isfinite(sun_et.alt_deg)
@@ -255,9 +239,7 @@ class TestSpiceObservationParity:
 
     def test_rejects_nonfinite_epochs(self):
         spice = load_excerpt_context()
-        observer = LunarObserver.from_spice(
-            spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0
-        )
+        observer = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0)
         with pytest.raises(ValueError, match="finite"):
             observer.observe_sun(float("nan"))
         with pytest.raises(ValueError, match="finite"):
@@ -265,17 +247,13 @@ class TestSpiceObservationParity:
 
     def test_out_of_coverage(self):
         spice = load_excerpt_context()
-        observer = LunarObserver.from_spice(
-            spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0
-        )
+        observer = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, radius_m=1_737_400.0)
         with pytest.raises(ValueError):
             observer.observe_sun_et(819720000.0 - 1.0)
 
     def test_spice_rejects_direction_and_position(self):
         spice = load_excerpt_context()
-        observer = LunarObserver.from_spice(
-            spice, "MOON_ME", 0.0, 0.0, height_m=0.0
-        )
+        observer = LunarObserver.from_spice(spice, "MOON_ME", 0.0, 0.0, height_m=0.0)
         with pytest.raises(ValueError, match="not supported"):
             observer.observe_direction(ICRS(0.0, 90.0), 2451545.0)
         with pytest.raises(ValueError, match="not supported"):
@@ -317,9 +295,7 @@ class TestAnalyticalRegression:
         assert LunarObserver.from_dict(site.to_dict()) == site
 
 
-@pytest.mark.skipif(
-    not KERNEL_DIR, reason="Set SIDERUST_LUNAR_KERNEL_DIR for full-kernel tests"
-)
+@pytest.mark.skipif(not KERNEL_DIR, reason="Set SIDERUST_LUNAR_KERNEL_DIR for full-kernel tests")
 class TestOptionalFullKernels:
     def test_external_reference(self):
         directory = Path(KERNEL_DIR)
