@@ -9,7 +9,7 @@ authors:
 repository-code: "https://github.com/Siderust/siderust-py"
 url: "https://github.com/Siderust/siderust-py"
 license: "AGPL-3.0-only"
-version: "0.7.0"
+version: "0.8.0"
 keywords:
   - astronomy
   - astrometry
