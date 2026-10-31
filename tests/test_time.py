@@ -4,8 +4,9 @@ import types
 from importlib import import_module
 from importlib.metadata import distribution
 
-import siderust
 import tempoch
+
+import siderust
 from siderust import time
 
 
