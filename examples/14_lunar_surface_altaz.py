@@ -15,7 +15,7 @@ Conventions:
 - Azimuth: north = 0°, east = 90° (north through east).
 - Altitude: geometric horizon = 0°, zenith = +90°.
 - Epoch is Julian Date TT; orientation is NAIF IAU_MOON Mean-Earth
-  (`MoonIauMeanEarth`, legacy alias `MoonPrincipalAxes` — not JPL DE MOON_PA).
+  (`MoonIauMeanEarth`, distinct from principal axes / JPL DE MOON_PA).
 - Geometric only: no refraction, aberration, light-time, or terrain.
 
 Run with: python examples/14_lunar_surface_altaz.py

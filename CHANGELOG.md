@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Install compatible `tempoch` automatically with `pip install siderust` and
   use `siderust.time` in the time-period example.
 - Verify the installed dependency in wheel and isolated sdist validation.
+- **Breaking:** reject `MoonPrincipalAxes` as an analytical `MoonIauMeanEarth`
+  alias, including coordinate constructors, transformations and serialized
+  dictionaries. Principal-axes realizations require binary PCK/frame kernels;
+  migrate analytical `IAU_MOON` inputs to `MoonIauMeanEarth`.
+
 
 ## [0.8.0] - 2026-10-29
 

@@ -134,9 +134,17 @@ class TestSelenocentricCoordinates:
         assert p.frame == "MoonIauMeanEarth"
         assert p.center == "Selenocentric"
 
-    def test_moon_principal_axes_alias(self):
-        p = Position(1.0, 0.0, 0.0, frame="MoonPrincipalAxes", center="Selenocentric", unit="km")
-        assert p.frame == "MoonIauMeanEarth"
+    @pytest.mark.parametrize("coordinate", [Position, SphericalPosition])
+    def test_moon_principal_axes_is_not_analytical(self, coordinate):
+        with pytest.raises(ValueError, match="distinct from analytical"):
+            coordinate(
+                1.0,
+                0.0,
+                1.0,
+                frame="MoonPrincipalAxes",
+                center="Selenocentric",
+                unit="km",
+            )
 
     def test_center_roundtrip_geo_seleno(self):
         jd = 2_460_000.5
@@ -307,12 +315,12 @@ class TestPositionDeserializationValidation:
                 }
             )
 
-    def test_position_dict_roundtrip_and_alias(self):
+    def test_position_dict_roundtrip_and_reject_principal_axes(self):
         original = Position(
             1.0,
             2.0,
             3.0,
-            frame="MoonPrincipalAxes",
+            frame="MoonIauMeanEarth",
             center="Selenocentric",
             unit="km",
         )
@@ -320,17 +328,12 @@ class TestPositionDeserializationValidation:
         assert restored.frame == "MoonIauMeanEarth"
         assert restored.x == original.x
         assert restored.center == original.center
-        aliased = Position.from_dict(
-            {
-                "x": 1.0,
-                "y": 0.0,
-                "z": 0.0,
-                "frame": "MoonPrincipalAxes",
-                "center": "Selenocentric",
-                "unit": "km",
-            }
-        )
-        assert aliased.frame == "MoonIauMeanEarth"
+        data = original.to_dict()
+        data["frame"] = "MoonPrincipalAxes"
+        with pytest.raises(ValueError, match="distinct from analytical"):
+            Position.from_dict(data)
+        with pytest.raises(ValueError, match="distinct from analytical"):
+            original.to_frame("MoonPrincipalAxes", 2451545.0)
 
     def test_spherical_dict_roundtrip_and_pickle(self):
         sph = SphericalPosition(

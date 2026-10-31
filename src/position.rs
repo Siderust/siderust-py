@@ -29,8 +29,6 @@ pub const FRAME_EMOD: &str = "EquatorialMeanOfDate";
 pub const FRAME_ETOD: &str = "EquatorialTrueOfDate";
 /// Preferred name for NAIF `IAU_MOON` analytical Mean-Earth (not JPL DE `MOON_PA`).
 pub const FRAME_MOON_IAU: &str = "MoonIauMeanEarth";
-/// Legacy alias for [`FRAME_MOON_IAU`]; accepted on input and canonicalized.
-pub const FRAME_MOON_PA: &str = "MoonPrincipalAxes";
 
 pub const CENTER_BARY: &str = "Barycentric";
 pub const CENTER_HELIO: &str = "Heliocentric";
@@ -44,16 +42,17 @@ const AU_KM: f64 = 149_597_870.700;
 
 type PositionReduceArgs = (f64, f64, f64, String, String, String);
 
-/// Canonicalize a frame name; `MoonPrincipalAxes` → `MoonIauMeanEarth`.
+/// Validate analytical/inertial frame names without conflating lunar realizations.
 pub(crate) fn canonicalize_frame(f: &str) -> PyResult<String> {
     match f {
         FRAME_ECL | FRAME_EQ | FRAME_ICRS | FRAME_ICRF | FRAME_EMOD | FRAME_ETOD
         | FRAME_MOON_IAU => Ok(f.to_string()),
-        FRAME_MOON_PA => Ok(FRAME_MOON_IAU.to_string()),
+        "MoonPrincipalAxes" => Err(PyValueError::new_err(
+            "MoonPrincipalAxes is distinct from analytical MoonIauMeanEarth; use MoonIauMeanEarth for IAU_MOON, or an explicit SPICE binary PCK/frame kernel for principal axes",
+        )),
         _ => Err(PyValueError::new_err(format!(
             "Unknown frame '{}'. Valid: EclipticMeanJ2000, EquatorialMeanJ2000, ICRS, ICRF, \
-             EquatorialMeanOfDate, EquatorialTrueOfDate, MoonIauMeanEarth \
-             (alias MoonPrincipalAxes = NAIF IAU_MOON Mean-Earth, not JPL DE MOON_PA)",
+             EquatorialMeanOfDate, EquatorialTrueOfDate, MoonIauMeanEarth",
             f
         ))),
     }
