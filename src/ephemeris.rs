@@ -1,7 +1,8 @@
 //! Runtime-loaded JPL DE4xx ephemeris backend for Python.
 //!
-//! Wraps `siderust::calculus::ephemeris::RuntimeEphemeris` to load BSP files
+//! Wraps `siderust::ephemeris::RuntimeEphemeris` to load BSP files
 //! at runtime and query Sun, Earth, and Moon positions.
+//! State evaluation/coverage failures raise Python `ValueError`, never a Rust panic.
 
 use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
@@ -60,69 +61,84 @@ impl PyRuntimeEphemeris {
     /// Sun barycentric position at a given Julian Date.
     ///
     /// Returns Position in EclipticMeanJ2000 / Barycentric / AU.
-    fn sun_barycentric(&self, jd: f64) -> PyPosition {
-        let p = self.inner.sun_barycentric(JulianDate::new(jd));
-        PyPosition::new_internal(
+    fn sun_barycentric(&self, jd: f64) -> PyResult<PyPosition> {
+        let p = self
+            .inner
+            .try_sun_barycentric(JulianDate::new(jd))
+            .map_err(|e| PyValueError::new_err(format!("Ephemeris state unavailable: {e}")))?;
+        Ok(PyPosition::new_internal(
             p.x().value(),
             p.y().value(),
             p.z().value(),
             FRAME_ECL,
             CENTER_BARY,
             UNIT_AU,
-        )
+        ))
     }
 
     /// Earth barycentric position at a given Julian Date.
     ///
     /// Returns Position in EclipticMeanJ2000 / Barycentric / AU.
-    fn earth_barycentric(&self, jd: f64) -> PyPosition {
-        let p = self.inner.earth_barycentric(JulianDate::new(jd));
-        PyPosition::new_internal(
+    fn earth_barycentric(&self, jd: f64) -> PyResult<PyPosition> {
+        let p = self
+            .inner
+            .try_earth_barycentric(JulianDate::new(jd))
+            .map_err(|e| PyValueError::new_err(format!("Ephemeris state unavailable: {e}")))?;
+        Ok(PyPosition::new_internal(
             p.x().value(),
             p.y().value(),
             p.z().value(),
             FRAME_ECL,
             CENTER_BARY,
             UNIT_AU,
-        )
+        ))
     }
 
     /// Earth heliocentric position at a given Julian Date.
     ///
     /// Returns Position in EclipticMeanJ2000 / Heliocentric / AU.
-    fn earth_heliocentric(&self, jd: f64) -> PyPosition {
-        let p = self.inner.earth_heliocentric(JulianDate::new(jd));
-        PyPosition::new_internal(
+    fn earth_heliocentric(&self, jd: f64) -> PyResult<PyPosition> {
+        let p = self
+            .inner
+            .try_earth_heliocentric(JulianDate::new(jd))
+            .map_err(|e| PyValueError::new_err(format!("Ephemeris state unavailable: {e}")))?;
+        Ok(PyPosition::new_internal(
             p.x().value(),
             p.y().value(),
             p.z().value(),
             FRAME_ECL,
             CENTER_HELIO,
             UNIT_AU,
-        )
+        ))
     }
 
     /// Earth barycentric velocity at a given Julian Date.
     ///
     /// Returns (vx, vy, vz) in AU/day in EclipticMeanJ2000.
-    fn earth_barycentric_velocity(&self, jd: f64) -> (f64, f64, f64) {
-        let v = self.inner.earth_barycentric_velocity(JulianDate::new(jd));
-        (v.x().value(), v.y().value(), v.z().value())
+    fn earth_barycentric_velocity(&self, jd: f64) -> PyResult<(f64, f64, f64)> {
+        let v = self
+            .inner
+            .try_earth_barycentric_velocity(JulianDate::new(jd))
+            .map_err(|e| PyValueError::new_err(format!("Ephemeris state unavailable: {e}")))?;
+        Ok((v.x().value(), v.y().value(), v.z().value()))
     }
 
     /// Moon geocentric position at a given Julian Date.
     ///
     /// Returns Position in EclipticMeanJ2000 / Geocentric / km.
-    fn moon_geocentric(&self, jd: f64) -> PyPosition {
-        let p = self.inner.moon_geocentric(JulianDate::new(jd));
-        PyPosition::new_internal(
+    fn moon_geocentric(&self, jd: f64) -> PyResult<PyPosition> {
+        let p = self
+            .inner
+            .try_moon_geocentric(JulianDate::new(jd))
+            .map_err(|e| PyValueError::new_err(format!("Ephemeris state unavailable: {e}")))?;
+        Ok(PyPosition::new_internal(
             p.x().value(),
             p.y().value(),
             p.z().value(),
             FRAME_ECL,
             CENTER_GEO,
             UNIT_KM,
-        )
+        ))
     }
 
     fn __repr__(&self) -> String {

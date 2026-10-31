@@ -26,6 +26,7 @@ from siderust import (
     culminations,
     find_moon_phases,
     moon_phase,
+    time,
 )
 from siderust.direction import ICRS, Horizontal
 
@@ -641,3 +642,55 @@ class TestEndToEnd:
         # Verify we get a sensible description
         s = str(geom)
         assert "illuminated" in s
+
+
+# Independent IMCCE check-file positions, rotated externally with ERFA 2.0.1.5
+# ecm06(J2000) @ fk5hip fixed orientation @ published VSOP native-to-FK5 tie.
+# Copied unchanged from published siderust 0.18.0 tests/data/ephemeris_frames.json.
+# Source: https://ftp.imcce.fr/pub/ephem/planets/vsop87/vsop87.chk
+# TDB epoch, AU; printed source quantization and summation justify 1e-10 AU.
+# No SPICE system-barycenter targets are substituted for planet centers.
+@pytest.mark.parametrize(
+    ("body", "method", "expected"),
+    [
+        (
+            Body.Earth,
+            "heliocentric_position",
+            (-0.1771349489859893, 0.9672417170283901, -3.840512837124228e-06),
+        ),
+        (
+            Body.Earth,
+            "barycentric_position",
+            (-0.18427647447407625, 0.9644535500748973, 0.00020229930760601344),
+        ),
+    ],
+)
+def test_published_vsop_canonical_positions(body, method, expected):
+    jd_tt = time.convert_timescale(2451545.0, time.TimeScale.TDB, time.TimeScale.TT)
+    position = getattr(body, method)(jd_tt)
+    assert position.frame == "EclipticMeanJ2000"
+    assert position.unit == "au"
+    assert (position.x, position.y, position.z) == pytest.approx(expected, rel=0, abs=1e-10)
+
+
+# ELP82B notice section 9, Table H (PREC=0), using its separate section 8
+# frame tie plus independent ERFA rotations, as preserved in the same fixture.
+# https://ftp.imcce.fr/pub/ephem/moon/elp82b/elp82b.ps
+# km, TDB dates; 1e-4 km covers published precision and argument/summation error.
+@pytest.mark.parametrize(
+    ("jd_tdb", "expected"),
+    [
+        (2469000.5, (-361602.9589544688, 44997.187102070406, -30696.68276574741)),
+        (2449000.5, (-363132.3206356082, 35863.846776908504, -33196.034540179535)),
+        (2429000.5, (-371577.53918784123, 75271.34050112002, -32227.97436282548)),
+        (2409000.5, (-373896.0893668841, 127406.98968806987, -30037.81662320951)),
+        (2389000.5, (-346331.6627793965, 206365.5874640755, -28502.133081015872)),
+    ],
+)
+def test_published_elp_canonical_positions(jd_tdb, expected):
+    jd_tt = time.convert_timescale(jd_tdb, time.TimeScale.TDB, time.TimeScale.TT)
+    position = Body.Moon.geocentric_position(jd_tt)
+    assert position.frame == "EclipticMeanJ2000"
+    assert position.center == "Geocentric"
+    assert position.unit == "km"
+    assert (position.x, position.y, position.z) == pytest.approx(expected, rel=0, abs=1e-4)

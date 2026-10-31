@@ -7,21 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0]
+
 ### Added
 
-- Public `siderust.time` facade exposing canonical `tempoch` Python time types,
-  conversions, exceptions, and interval helpers without duplicating PyO3 classes.
+- Public `siderust.time` facade exposing the original `tempoch` Python time
+  types, conversions, exceptions and interval helpers without duplicate classes.
 
 ### Changed
 
-- Install compatible `tempoch` automatically with `pip install siderust` and
-  use `siderust.time` in the time-period example.
-- Verify the installed dependency in wheel and isolated sdist validation.
-- **Breaking:** reject `MoonPrincipalAxes` as an analytical `MoonIauMeanEarth`
-  alias, including coordinate constructors, transformations and serialized
-  dictionaries. Principal-axes realizations require binary PCK/frame kernels;
-  migrate analytical `IAU_MOON` inputs to `MoonIauMeanEarth`.
+- Adopt published crates.io Siderust **0.18.0** with the `spice` feature in
+  both the bindings and independent interoperability consumer. PyO3 0.30.1
+  and bridge protocol 2 are unchanged.
+- Inherit canonical IAU 2006 J2000 frame normalization for VSOP87/ELP2000
+  outputs and the lunar TT-to-TDB correction from the core. Frame consistency
+  does not imply greater intrinsic ephemeris-model accuracy.
+- Install compatible `tempoch` automatically with `pip install siderust`;
+  preserve its wheel/sdist validation and the time-period example.
+- Synchronize Rust, Python and citation versions at 0.9.0.
 
+### Fixed
+
+- Return actionable Python `ValueError` for unavailable runtime ephemeris states
+  and center-conversion failures instead of propagating a Rust panic.
+- Reject the incorrect analytical `MoonPrincipalAxes` alias consistently in
+  coordinate constructors, transforms, dictionaries and pickle reconstruction.
+  Explicit kernel-backed SPICE `MOON_PA` / `MOON_ME` semantics are unchanged.
+
+### Breaking changes
+
+- Analytical lunar coordinates must name `MoonIauMeanEarth`. Legacy serialized
+  `MoonPrincipalAxes` inputs now raise `ValueError`: explicitly rename them only
+  if their original meaning was analytical `IAU_MOON`. Genuine principal-axes
+  coordinates require their matching binary PCK/frame kernels; never relabel them.
+- Corrected VSOP87/ELP2000 frame conventions and lunar time arguments change
+  analytical numerical results. Review downstream snapshots using their physical
+  frame, center, epoch and model conventions; no Python-side rotation is needed.
+- Core SPK loaders strictly reject unsupported frames/types and preserve selected
+  segment precedence. Kernel errors surface as Python exceptions, without
+  silently substituting analytical data.
 
 ## [0.8.0] - 2026-10-29
 

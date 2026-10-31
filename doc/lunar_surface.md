@@ -1,12 +1,16 @@
 # Lunar surface Alt/Az
 
-Siderust for Python 0.8 exposes geometric altitude and azimuth for observers on
+Siderust for Python 0.9 exposes geometric altitude and azimuth for observers on
 the Moon through two explicit backends:
 
-1. **Analytical** (unchanged from 0.7): VSOP/ELP ephemerides with NAIF
+1. **Analytical**: VSOP/ELP ephemerides with NAIF
    `IAU_MOON` Mean-Earth orientation (`MoonIauMeanEarth`).
 2. **SPICE / DE440**: one immutable `SpiceContext` supplying SPK states, binary
    PCK Type 2 orientation, and FK lunar frames (`MOON_ME`, `MOON_PA`, …).
+
+Analytical outputs use the canonical frame conventions and lunar TDB argument
+from Siderust Rust 0.18.0. Numerical values differ from earlier releases;
+the astronomical model and its intrinsic accuracy are separate from its frame realization.
 
 ## Analytical API
 

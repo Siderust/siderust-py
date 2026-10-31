@@ -13,7 +13,7 @@ use siderust::coordinates::frames::{
     MoonIauMeanEarth,
 };
 use siderust::coordinates::transform::ext::PositionAstroExt;
-use siderust::coordinates::transform::TransformCenter;
+use siderust::coordinates::transform::{try_to_center_with, AstroContext};
 use siderust::qtty::*;
 use siderust::time::JulianDate;
 
@@ -215,7 +215,11 @@ pub(crate) fn convert_frame(
 macro_rules! center_conv {
     ($x:expr, $y:expr, $z:expr, $jd:expr, $C1:ty => $C2:ty) => {{
         let p = CPosition::<$C1, EclipticMeanJ2000, AstronomicalUnit>::new($x, $y, $z);
-        let r: CPosition<$C2, EclipticMeanJ2000, AstronomicalUnit> = p.to_center($jd);
+        let ctx: AstroContext = AstroContext::default();
+        let r: CPosition<$C2, EclipticMeanJ2000, AstronomicalUnit> =
+            try_to_center_with(&p, $jd, &ctx).map_err(|err| {
+                PyValueError::new_err(format!("Center conversion unavailable: {err}"))
+            })?;
         Ok((r.x().value(), r.y().value(), r.z().value()))
     }};
 }

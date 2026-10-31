@@ -11,5 +11,5 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = "0.30.1"
 siderust-py = { path = "../.." }
-siderust = { version = "0.17.0" }
+siderust = { version = "0.18.0" }
 tempoch-py = "0.5.0"

@@ -18,6 +18,13 @@ The PyPI badge refers to the Python distribution (`siderust`). The docs.rs
 badge documents the companion `siderust-py` Rust crate for cross-extension
 interoperability. The Python package is imported as `siderust`.
 
+Version 0.9 uses the published Siderust Rust 0.18 core. Its corrected VSOP87/ELP2000
+frame conventions and lunar TDB argument change analytical numerical results.
+Analytical lunar coordinates use `MoonIauMeanEarth`; `MoonPrincipalAxes` is
+rejected, including in dictionaries and pickle reconstruction. Rename legacy
+data only if it meant analytical `IAU_MOON`. Actual principal-axes observations
+require matching SPICE kernels; see [lunar surface conventions](doc/lunar_surface.md).
+
 ## Features
 
 - **Rust-backed astronomy** with Python orchestration and Pythonic result types
@@ -282,7 +289,7 @@ Add the published interoperability crate to a Rust extension:
 ```toml
 [dependencies]
 pyo3 = "0.30"
-siderust-py = "0.8"
+siderust-py = "0.9"
 ```
 
 The public bridge lives under `siderust_py::interop` and uses a versioned,

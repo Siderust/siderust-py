@@ -335,6 +335,33 @@ class TestPositionDeserializationValidation:
         with pytest.raises(ValueError, match="distinct from analytical"):
             original.to_frame("MoonPrincipalAxes", 2451545.0)
 
+    def test_spherical_dict_rejects_principal_axes(self):
+        valid = SphericalPosition(
+            30.0, -10.0, 2.0, frame="MoonIauMeanEarth", center="Selenocentric", unit="km"
+        )
+        data = valid.to_dict()
+        data["frame"] = "MoonPrincipalAxes"
+        with pytest.raises(ValueError, match="distinct from analytical"):
+            SphericalPosition.from_dict(data)
+
+    @pytest.mark.parametrize("coordinate", [Position, SphericalPosition])
+    @pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
+    def test_legacy_pickle_rejects_principal_axes(self, coordinate, protocol):
+        # Reproduce the old reducer's (class, positional constructor args).
+        # It must fail during unpickling, never silently relabel physical axes.
+        class LegacyCoordinate:
+            def __reduce__(self):
+                return coordinate, (1.0, 0.0, 1.0, "MoonPrincipalAxes", "Selenocentric", "km")
+
+        payload = pickle.dumps(LegacyCoordinate(), protocol=protocol)
+        with pytest.raises(ValueError, match="distinct from analytical"):
+            pickle.loads(payload)
+
+    def test_combined_transform_rejects_principal_axes(self):
+        valid = Position(1.0, 0.0, 0.0, frame="MoonIauMeanEarth", center="Selenocentric", unit="km")
+        with pytest.raises(ValueError, match="distinct from analytical"):
+            valid.transform("MoonPrincipalAxes", "Selenocentric", J2000_TT)
+
     def test_spherical_dict_roundtrip_and_pickle(self):
         sph = SphericalPosition(
             30.0,
@@ -353,7 +380,7 @@ class TestPositionDeserializationValidation:
             assert pickled.frame == sph.frame
 
     def test_position_pickle_roundtrip(self):
-        pos = Position(1.0, 0.0, 0.0, frame="ICRS", center="Selenocentric", unit="km")
+        pos = Position(1.0, 0.0, 0.0, frame="MoonIauMeanEarth", center="Selenocentric", unit="km")
         for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
             restored = pickle.loads(pickle.dumps(pos, protocol=protocol))
             assert restored.x == pos.x

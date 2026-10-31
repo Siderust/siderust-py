@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from siderust import LunarObserver, SpiceContext
+from siderust import LunarObserver, RuntimeEphemeris, SpiceContext
 from siderust.direction import ICRS
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "lunar_de440"
@@ -492,3 +492,20 @@ def test_provenance_manifest_present():
     data = json.loads((FIXTURES / "provenance.json").read_text())
     assert data["generator"].startswith("SpiceyPy")
     assert "source_sha256" in data
+
+
+@pytest.mark.parametrize(
+    "method",
+    [
+        "sun_barycentric",
+        "earth_barycentric",
+        "earth_heliocentric",
+        "moon_geocentric",
+        "earth_barycentric_velocity",
+    ],
+)
+def test_runtime_coverage_errors_are_python_exceptions(method):
+    eph = RuntimeEphemeris.from_bytes((FIXTURES / "excerpt.bsp").read_bytes())
+    # The independent excerpt covers 2026, not J2000. No stale or analytical fallback.
+    with pytest.raises(ValueError, match="Ephemeris state unavailable"):
+        getattr(eph, method)(2451545.0)
