@@ -7,7 +7,7 @@ queries, ephemeris access, and moon-phase computation — all backed by
 Rust for performance and precision.
 """
 
-from . import direction
+from . import direction, time
 
 # Import from the Rust extension module
 from siderust._siderust import (
@@ -58,6 +58,7 @@ from siderust._siderust import (
 
 __all__ = [
     "direction",
+    "time",
     # Core types
     "Observer",
     "LunarObserver",

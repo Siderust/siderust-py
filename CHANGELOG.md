@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Public `siderust.time` facade exposing canonical `tempoch` Python time types,
+  conversions, exceptions, and interval helpers without duplicating PyO3 classes.
+
+### Changed
+
+- Install compatible `tempoch` automatically with `pip install siderust` and
+  use `siderust.time` in the time-period example.
+- Verify the installed dependency in wheel and isolated sdist validation.
+
 ## [0.8.0] - 2026-10-29
 
 ### Added
