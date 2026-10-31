@@ -16,7 +16,7 @@ Run with: python examples/10_time_periods.py
 
 from datetime import datetime, timedelta, timezone
 
-from tempoch import (
+from siderust.time import (
     JulianDate,
     TimePeriod,
     TimeScale,

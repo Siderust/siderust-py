@@ -46,6 +46,7 @@ class TestModuleExports:
             "Body",
             "Star",
             "direction",
+            "time",
             "CrossingEvent",
             "CulminationEvent",
             "CrossingDirection",

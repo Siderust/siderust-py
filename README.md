@@ -21,6 +21,7 @@ interoperability. The Python package is imported as `siderust`.
 ## Features
 
 - **Rust-backed astronomy** with Python orchestration and Pythonic result types
+- **Astronomical time primitives** from the automatically installed dependency, exposed via `siderust.time`
 - **Observers and observing sites**, including predefined major observatories
 - **Lunar surface observers** with geometric Alt/Az for ICRS directions,
   finite-distance selenocentric targets, and optional DE440 SPICE-backed
@@ -45,6 +46,10 @@ Install the Python package with pip:
 pip install siderust
 ```
 
+This installs `tempoch` automatically. Its original Python types and functions
+are also accessible through `siderust.time`; a separate installation is not
+required.
+
 To build from source, install a Rust toolchain and Maturin:
 
 ```bash
@@ -56,7 +61,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 python -m pip install --upgrade pip
 python -m pip install "maturin>=1.9.4,<2"
-maturin develop
+python -m pip install -e .
 ```
 
 ## Quick Start
@@ -94,6 +99,7 @@ print(f"Vega altitude: {altitude:.2f}°")
 
 | Area | Main API |
 |------|----------|
+| **Time** | `time.JulianDate`, `time.ModifiedJulianDate`, `time.TimePeriod`, `time.TimeScale` |
 | **Observers** | `Observer`, predefined observatories |
 | **Lunar surface** | `LunarObserver`, `LunarObservation`, `SpiceContext` |
 | **Solar system** | `Body`, `Orbit`, `Comet`, `RuntimeEphemeris` |
@@ -104,6 +110,20 @@ print(f"Vega altitude: {altitude:.2f}°")
 | **Events** | `crossings()`, `culminations()`, `intersect_periods()` |
 | **Moon phase** | `moon_phase()`, `find_moon_phases()` |
 | **Twilight** | `TWILIGHT_HORIZON`, `TWILIGHT_CIVIL`, `TWILIGHT_NAUTICAL`, `TWILIGHT_ASTRONOMICAL` |
+
+### Time primitives
+
+```python
+from siderust import Body, Observer
+from siderust.time import ModifiedJulianDate
+
+mjd = ModifiedJulianDate(60000.0)
+altitude = Body.Sun.altitude_at(Observer.roque_de_los_muchachos(), mjd.value)
+```
+
+Siderust's existing observation functions accept MJD numbers, so pass
+`.value` when using a `ModifiedJulianDate`. Directly accepting typed time
+objects is not yet part of the Python API.
 
 ### Observer
 
@@ -302,7 +322,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 python -m pip install --upgrade pip
 python -m pip install "maturin>=1.9.4,<2" pytest pytest-cov ruff
-maturin develop
+python -m pip install -e .
 ```
 
 Common checks used by CI:
