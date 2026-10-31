@@ -1,12 +1,16 @@
 # Lunar surface Alt/Az
 
-Siderust for Python 0.8 exposes geometric altitude and azimuth for observers on
+Siderust for Python 0.9 exposes geometric altitude and azimuth for observers on
 the Moon through two explicit backends:
 
-1. **Analytical** (unchanged from 0.7): VSOP/ELP ephemerides with NAIF
+1. **Analytical**: VSOP/ELP ephemerides with NAIF
    `IAU_MOON` Mean-Earth orientation (`MoonIauMeanEarth`).
 2. **SPICE / DE440**: one immutable `SpiceContext` supplying SPK states, binary
    PCK Type 2 orientation, and FK lunar frames (`MOON_ME`, `MOON_PA`, …).
+
+Analytical outputs use the canonical frame conventions and lunar TDB argument
+from Siderust Rust 0.18.0. Numerical values differ from earlier releases;
+the astronomical model and its intrinsic accuracy are separate from its frame realization.
 
 ## Analytical API
 
@@ -71,7 +75,7 @@ state and no SpiceyPy runtime dependency.
 | Name | Meaning |
 |------|---------|
 | `MoonIauMeanEarth` | Analytical NAIF `IAU_MOON` Mean-Earth |
-| `MoonPrincipalAxes` | Legacy **alias** of `MoonIauMeanEarth` (not JPL DE `MOON_PA`) |
+| `MoonPrincipalAxes` | Distinct physical frame; rejected by analytical coordinates. Use explicit SPICE PCK/FK data for a principal-axes realization. |
 | `MOON_ME` / `MOON_PA` | Runtime FK names from the loaded DE440 frame kernel |
 
 A SPICE observer never silently falls back to VSOP/ELP or analytical IAU_MOON.
@@ -130,3 +134,8 @@ See also:
 
 - [examples/14_lunar_surface_altaz.py](../examples/14_lunar_surface_altaz.py)
 - [examples/15_spice_lunar_de440.py](../examples/15_spice_lunar_de440.py)
+
+`MoonPrincipalAxes` is no longer accepted as an input alias, including in
+serialized coordinate dictionaries. Migrate analytical `IAU_MOON` data to
+`MoonIauMeanEarth`. Do not relabel actual principal-axes coordinates: supply
+the appropriate binary PCK and frame kernel through the SPICE API.

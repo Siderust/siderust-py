@@ -4,8 +4,7 @@
 //!
 //! - **Analytical** (`LunarObserver(lon, lat, height)`): VSOP/ELP ephemerides
 //!   with NAIF `IAU_MOON` Mean-Earth orientation (`MoonIauMeanEarth`). The
-//!   legacy `MoonPrincipalAxes` name remains the same analytical marker, **not**
-//!   JPL DE `MOON_PA`.
+//!   principal-axes frame is distinct and requires a SPICE realization.
 //! - **SPICE** (`LunarObserver.from_spice(...)`): DE-specific frames from an
 //!   immutable [`crate::spice_context::PySpiceContext`] (SPK + binary PCK + FK).
 //!   No analytical fallback.
@@ -1001,9 +1000,9 @@ mod tests {
     }
 
     #[test]
-    fn moon_principal_axes_alias_canonicalizes() {
-        let frame = canonicalize_frame("MoonPrincipalAxes").unwrap();
-        assert_eq!(frame, FRAME_MOON_IAU);
+    fn moon_principal_axes_is_not_an_analytical_alias() {
+        assert!(canonicalize_frame("MoonPrincipalAxes").is_err());
+        assert_eq!(canonicalize_frame(FRAME_MOON_IAU).unwrap(), FRAME_MOON_IAU);
     }
 
     #[test]
