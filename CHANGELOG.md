@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-01
+
+### Fixed
+
+- Pick up Tempoch 0.11.2 via the published Siderust 0.18.1 core so
+  out-of-coverage fractional UTC MJD and non-finite EOP lookups no longer
+  reuse the final IERS sample. In-coverage interpolation and UTC/UT1
+  conversions retain their existing semantics.
+
+### Changed
+
+- Upgrade the Rust `siderust` dependency and the independent PyO3
+  interoperability consumer to 0.18.1.
+- Require the published Python `tempoch>=0.5.1,<0.6` package for
+  `siderust.time`, and update the Rust interop consumer to `tempoch-py` 0.5.1.
+- Synchronize Rust crate, PyPI distribution and citation versions at 0.9.1.
+  Public Python APIs and bridge protocol 2 remain unchanged.
+
+
 ## [0.9.0]
 
 ### Added

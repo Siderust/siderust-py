@@ -65,8 +65,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.30"
-siderust-py = "0.9"
-tempoch-py = "0.5"
+siderust-py = "0.9.1"
+tempoch-py = "0.5.1"
 ```
 
 For unreleased siderust-py changes, pin a Git dependency to an immutable tag or
@@ -148,8 +148,8 @@ fn copy_horizontal(py: Python<'_>, value: &Bound<'_, PyAny>) -> PyResult<Py<PyAn
 
 ## Coordinated release and downstream validation
 
-Siderust 0.18.0, Tempoch 0.11.1, Affn 0.12.1 and PyO3 0.30.1 are the published
-upstream dependencies for siderust-py 0.9.0. Both bridges use the same provider
+Siderust 0.18.1, Tempoch 0.11.2, Affn 0.12.1 and PyO3 0.30.1 are the published
+upstream dependencies for siderust-py 0.9.1. Both bridges use the same provider
 identities; do not combine the 0.4 Rust bridges with the 0.5+ graph. PyO3 0.30
 requires Python 3.9+ and Rust 1.85+. This project retains its existing Python
 3.9–3.14 matrix.
@@ -168,8 +168,8 @@ tests exercise UTC offset normalization, subsecond precision and rejection of
 naive datetimes alongside the canonical Observer/ICRS contract. The
 bridge-contract job runs on Linux, macOS and Windows.
 
-For this release, both the Rust crate and Python package are at 0.9.0 with
-published crates.io Siderust **0.18.0**. Bridge protocol 2 (`IcrsParts`,
+For this release, both the Rust crate and Python package are at 0.9.1 with
+published crates.io Siderust **0.18.1** and Python Tempoch **0.5.1**. Bridge protocol 2 (`IcrsParts`,
 `HorizontalParts`, Observer hooks) is unchanged from 0.6–0.7. Never register
 copies of the private wrappers. The Python direction migration is documented in
 [the direction API](../direction.md); lunar surface usage is in
