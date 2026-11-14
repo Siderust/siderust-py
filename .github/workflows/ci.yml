@@ -39,6 +39,8 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo fmt --manifest-path tests/interop_consumer/Cargo.toml -- --check
+      - name: Test scientific reference tooling
+        run: python -B -m unittest discover -s scripts/validation/cspice
       - name: Check Python formatting
         run: python -m ruff format --check python tests examples scripts
 
